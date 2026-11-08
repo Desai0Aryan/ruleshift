@@ -11,7 +11,10 @@
       "bundleIdentifier": "com.example.ruleshift",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "associatedDomains": [
+        "applinks:ruleshift.app"
+      ]
     },
     "android": {
       "adaptiveIcon": {

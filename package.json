@@ -5,19 +5,23 @@
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@shopify/react-native-skia": "^2.14.0",
+    "@supabase/supabase-js": "^2.119.0",
     "expo": "~58.0.23",
     "expo-audio": "~58.0.11",
     "expo-clipboard": "~58.0.4",
     "expo-constants": "~58.0.15",
+    "expo-file-system": "~58.0.13",
     "expo-haptics": "~58.0.7",
     "expo-linear-gradient": "~58.0.3",
     "expo-linking": "~58.0.16",
     "expo-router": "~58.0.30",
+    "expo-sharing": "~58.0.22",
     "expo-status-bar": "~58.0.4",
     "react": "19.3.0",
     "react-native": "0.88.1",
     "react-native-safe-area-context": "~5.11.1",
-    "react-native-screens": "~4.30.1"
+    "react-native-screens": "~4.30.1",
+    "react-native-url-polyfill": "^4.0.0"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
@@ -37,7 +41,10 @@
     "levels:solve": "esbuild scripts/solve-levels.ts --bundle --platform=node --format=cjs --loader:.json=json --outfile=.tmp/solve-levels.cjs --log-level=error && node .tmp/solve-levels.cjs",
     "web:build": "node scripts/build-web.mjs",
     "levels:metrics": "esbuild scripts/level-metrics.ts --bundle --platform=node --format=cjs --loader:.json=json --outfile=.tmp/level-metrics.cjs --log-level=error && node .tmp/level-metrics.cjs",
-    "rules:matrix": "esbuild scripts/rule-matrix.ts --bundle --platform=node --format=cjs --loader:.json=json --outfile=.tmp/rule-matrix.cjs --log-level=error && node .tmp/rule-matrix.cjs"
+    "rules:matrix": "esbuild scripts/rule-matrix.ts --bundle --platform=node --format=cjs --loader:.json=json --outfile=.tmp/rule-matrix.cjs --log-level=error && node .tmp/rule-matrix.cjs",
+    "gif:demo": "esbuild scripts/make-gif.ts --bundle --platform=node --format=cjs --loader:.json=json --outfile=.tmp/make-gif.cjs --log-level=error && node .tmp/make-gif.cjs",
+    "server:build": "esbuild src/server/handler.ts --bundle --format=esm --platform=neutral --loader:.json=json --outfile=supabase/functions/api/engine.bundle.js --log-level=error",
+    "seeds:gen": "esbuild scripts/gen-seeds.ts --bundle --platform=node --format=cjs --loader:.json=json --outfile=.tmp/gen-seeds.cjs --log-level=error && node .tmp/gen-seeds.cjs"
   },
   "private": true
 }

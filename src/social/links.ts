@@ -16,10 +16,13 @@ export function extractCode(input: string): string | null {
   return m ? m[0] : null;
 }
 
-export function shareMessage(chain: Chain): string {
+/** `remoteUrl` (short server link) wins; without a backend the message carries the full self-contained code. */
+export function shareMessage(chain: Chain, remoteUrl?: string): string {
   const last = chain.links[chain.links.length - 1];
   const rule = last ? RULES[last.rule].name : 'a twist';
   const depth = chain.links.length;
+  const intro = `I changed the rules: ${rule}. That's ${depth} change${depth === 1 ? '' : 's'} deep. Can you still solve it? \u{1F9E9}`;
+  if (remoteUrl) return `${intro}\n${remoteUrl}`;
   const code = encodeChain(chain);
-  return `I changed the rules: ${rule}. That's ${depth} change${depth === 1 ? '' : 's'} deep. Can you still solve it? \u{1F9E9}\n${shareUrl(code)}\n\nCode: ${code}`;
+  return `${intro}\n${shareUrl(code)}\n\nCode: ${code}`;
 }

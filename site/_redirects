@@ -1,0 +1,3 @@
+# Netlify / Cloudflare Pages: any /c/<id> serves the landing page (the page reads the id from the URL)
+/c/*  /c/index.html  200
+/.well-known/apple-app-site-association  /.well-known/apple-app-site-association  200

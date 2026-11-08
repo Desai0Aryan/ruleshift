@@ -1,0 +1,27 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A friend changed the rules — RULESHIFT</title>
+<meta property="og:title" content="I changed the rules. Can you still solve it?">
+<meta property="og:description" content="RULESHIFT: solve it, change ONE rule, pass it on.">
+<style>
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:radial-gradient(120% 80% at 50% 0%,#232a7a,#0b0e24 60%);color:#eef0ff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;text-align:center;padding:24px}
+.logo{font-size:44px;font-weight:900;letter-spacing:.04em;background:linear-gradient(90deg,#6c7bff,#ff7ad9 60%,#ffd54a);-webkit-background-clip:text;background-clip:text;color:transparent}
+p{color:#9aa3e6;max-width:320px;margin:10px auto 22px}
+a.btn{display:block;width:280px;margin:10px auto;padding:15px;border-radius:30px;font-weight:800;text-decoration:none;color:#fff;background:linear-gradient(135deg,#6c7bff,#8b5cff)}
+a.alt{background:#151a3d;border:1px solid #2a3170;color:#eef0ff}
+small{color:#6f78c4}
+</style></head><body><main>
+<div class="logo">RULESHIFT</div>
+<p>A friend solved a puzzle, changed one rule, and sent it to you.</p>
+<a class="btn" id="open" href="#">Open in the app</a>
+<a class="btn alt" id="store" href="#">Get RULESHIFT</a>
+<small id="note"></small>
+</main>
+<script>
+// TODO(owner): put the real App Store URL here once the app exists.
+var APP_STORE_URL = '#';
+var id = (location.pathname.match(/\/c\/([A-Za-z0-9_-]+)/) || [])[1] || '';
+document.getElementById('open').href = 'ruleshift://c/' + id;
+document.getElementById('store').href = APP_STORE_URL;
+if (!id) document.getElementById('note').textContent = 'This link is missing its challenge id.';
+</script></body></html>

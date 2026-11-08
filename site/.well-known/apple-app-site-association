@@ -1,0 +1,7 @@
+{
+  "applinks": {
+    "details": [
+      { "appIDs": ["TEAMID.com.example.ruleshift"], "components": [ { "/": "/c/*", "comment": "Challenge links" } ] }
+    ]
+  }
+}

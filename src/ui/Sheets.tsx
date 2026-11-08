@@ -5,12 +5,14 @@ import type { Solution } from '../game/types';
 import { RULE_ORDER, RULES } from '../rules';
 import { verifyRule, type Verdict } from '../rules/verify';
 import type { Chain } from '../social/chain';
-import { encodeChain } from '../social/codec';
 import { type Challenge, passItOn } from '../social/flow';
-import { shareMessage } from '../social/links';
+import { getRepository } from '../social';
+import { backendEnabled } from '../config';
+import { shareReplayGif } from './exportGif';
 import { track } from '../telemetry';
 import { C } from './theme';
 
+const getRepoIsOnlineCapable = () => backendEnabled;
 const GLYPH = { gravity: '⇅', twin: '●●', speed: '»', portal: '◎' } as const;
 
 interface RowState { status: 'checking' | 'ok' | 'no'; text: string; progress: number; verdict?: Verdict }
@@ -81,27 +83,43 @@ export function RulePickerSheet(props: {
   );
 }
 
-export function SendSheet(props: { chain: Chain; onReplay: () => void; onHome: () => void }) {
-  const code = encodeChain(props.chain);
-  const msg = shareMessage(props.chain);
+export function SendSheet(props: { chain: Chain; message: string; remote: boolean; nodeId?: string; onReplay: () => void; onHome: () => void }) {
   const last = props.chain.links[props.chain.links.length - 1];
   const [note, setNote] = useState('');
-  const flash = (t: string) => { setNote(t); setTimeout(() => setNote(''), 1800); };
+  const [gifProgress, setGifProgress] = useState<number | null>(null);
+  const flash = (t: string) => { setNote(t); setTimeout(() => setNote(''), 2200); };
+  const repo = getRepository();
   return (
     <View style={s.sheet}>
-      <Text style={s.h2}>Ready to send {'🚀'}</Text>
-      <Text style={s.p}>{RULES[last.rule].name} added. Your friend must solve it {'—'} then add their own twist.</Text>
-      <Text style={s.code} numberOfLines={3} selectable>{code}</Text>
+      <Text style={s.h2}>Ready to send {'\uD83D\uDE80'}</Text>
+      <Text style={s.p}>{RULES[last.rule].name} added. Your friend must solve it {'\u2014'} then add their own twist.</Text>
+      <Text style={s.code} numberOfLines={3} selectable>{props.message}</Text>
+      {!props.remote && getRepoIsOnlineCapable() && <Text style={s.warn}>Offline right now, so this is a self-contained code. It works anywhere.</Text>}
       <View style={s.row}>
-        <Pressable style={[s.btn, s.mint]} onPress={async () => { track('share_tapped', { depth: props.chain.links.length }); try { await Share.share({ message: msg }); } catch { /* cancelled */ } }}>
+        <Pressable style={[s.btn, s.mint]} onPress={async () => {
+          track('share_tapped', { depth: props.chain.links.length, remote: props.remote });
+          void repo.event(null, props.nodeId, 'share');
+          try { await Share.share({ message: props.message }); } catch { /* cancelled */ }
+        }}>
           <Text style={[s.btnT, { color: C.bgTop }]}>Send to a friend</Text>
         </Pressable>
-        <Pressable style={s.btn} onPress={async () => { track('copy_tapped'); await Clipboard.setStringAsync(msg); flash('Copied — paste it in any chat'); }}>
+        <Pressable style={s.btn} onPress={async () => { track('copy_tapped'); void repo.event(null, props.nodeId, 'copy'); await Clipboard.setStringAsync(props.message); flash('Copied \u2014 paste it in any chat'); }}>
           <Text style={s.btnT}>Copy</Text>
         </Pressable>
       </View>
       <View style={s.row}>
         <Pressable style={s.btn} onPress={props.onReplay}><Text style={s.btnT}>Watch replay</Text></Pressable>
+        <Pressable style={s.btn} disabled={gifProgress !== null} onPress={async () => {
+          setGifProgress(0);
+          track('gif_export', { depth: props.chain.links.length });
+          const r = await shareReplayGif(props.chain, setGifProgress);
+          setGifProgress(null);
+          if (r !== 'shared') flash(r === 'unavailable' ? 'Sharing isn\u2019t available on this device' : 'Couldn\u2019t make the GIF');
+        }}>
+          <Text style={s.btnT}>{gifProgress === null ? 'Share GIF' : `Making GIF ${Math.round(gifProgress * 100)}%`}</Text>
+        </Pressable>
+      </View>
+      <View style={s.row}>
         <Pressable style={s.btn} onPress={props.onHome}><Text style={s.btnT}>Home</Text></Pressable>
       </View>
       {!!note && <Text style={s.note}>{note}</Text>}
@@ -125,5 +143,6 @@ const s = StyleSheet.create({
   mint: { backgroundColor: C.mint, borderWidth: 0 },
   btnT: { color: C.text, fontWeight: '700', fontSize: 15 },
   code: { color: C.dim, fontFamily: 'Menlo', fontSize: 10, backgroundColor: C.bgTop, borderRadius: 10, borderWidth: 1, borderColor: C.panelEdge, padding: 8, marginBottom: 10 },
+  warn: { color: C.gold, fontSize: 12, marginBottom: 8 },
   note: { color: C.mint, textAlign: 'center', marginTop: 10, fontSize: 13 },
 });

@@ -1,0 +1,9 @@
+# Minimal config; run `supabase init` to regenerate a full one. Anonymous sign-ins must be ENABLED in
+# Dashboard -> Authentication -> Providers -> "Allow anonymous sign-ins".
+project_id = "ruleshift"
+
+[auth]
+enable_anonymous_sign_ins = true
+
+[functions.api]
+verify_jwt = true

@@ -5,22 +5,17 @@ import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BASE_LEVELS } from '../game/levels';
-import { decodeChain } from '../social/codec';
-import { challengeFromChain } from '../social/flow';
-import { extractCode } from '../social/links';
+import { getRepository } from '../social';
+import { SEED_CHAINS } from '../social/seeds';
 import { track } from '../telemetry';
 import { useAppState } from './store';
 import { C } from './theme';
 
-export function openCode(text: string): string | null {
-  const code = extractCode(text);
-  if (!code) return 'That doesn’t look like a RULESHIFT challenge.';
-  const d = decodeChain(code);
-  if (!d.ok) { track('challenge_invalid'); return d.error; }
-  const c = challengeFromChain(d.chain);
-  if (!c.ok) { track('challenge_invalid'); return c.error; }
-  track('challenge_opened', { depth: d.chain.links.length });
-  router.push({ pathname: '/play', params: { code } });
+/** Accepts a code, a short link, or a whole pasted message; validates before navigating. */
+export async function openCode(text: string): Promise<string | null> {
+  const r = await getRepository().fetch(text);
+  if (!r.ok) { track('challenge_invalid'); return r.error; }
+  router.push({ pathname: '/play', params: { code: text } });
   return null;
 }
 
@@ -60,10 +55,19 @@ export function HomeScreen() {
           <Pressable style={s.pbtn} onPress={async () => {
             const clip = text.trim() ? text : await Clipboard.getStringAsync();
             setText(clip);
-            setMsg(openCode(clip) ?? '');
+            setMsg((await openCode(clip)) ?? '');
           }}><Text style={s.pbtnT}>{text.trim() ? 'Go' : 'Paste'}</Text></Pressable>
         </View>
         {!!msg && <Text style={s.msg}>{msg}</Text>}
+
+        <Text style={s.sec}>Featured chains</Text>
+        {SEED_CHAINS.map((c, i) => (
+          <Pressable key={i} style={s.seed} onPress={() => { track('seed_opened', { depth: c.depth }); router.push({ pathname: '/play', params: { code: c.code } }); }}>
+            <View style={{ flex: 1 }}><Text style={s.seedT}>{c.title}</Text><Text style={s.seedD}>{c.depth} {c.depth === 1 ? 'twist' : 'twists'} deep</Text></View>
+            <Text style={s.seedGo}>{'\u203A'}</Text>
+          </Pressable>
+        ))}
+        <Pressable style={s.mine} onPress={() => router.push('/chains')}><Text style={s.mineT}>My chains</Text></Pressable>
       </ScrollView>
     </LinearGradient>
   );
@@ -85,5 +89,12 @@ const s = StyleSheet.create({
   input: { flex: 1, height: 44, borderRadius: 12, borderWidth: 1, borderColor: C.panelEdge, backgroundColor: C.panel, color: C.text, paddingHorizontal: 12, fontSize: 14 },
   pbtn: { height: 44, paddingHorizontal: 16, borderRadius: 12, backgroundColor: C.panel, borderWidth: 1, borderColor: C.pink, alignItems: 'center', justifyContent: 'center' },
   pbtnT: { color: C.pink, fontWeight: '700' },
+  sec: { color: C.dim, fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase', alignSelf: 'flex-start', marginTop: 26, marginBottom: 8, width: '100%', maxWidth: 340 },
+  seed: { flexDirection: 'row', alignItems: 'center', width: '100%', maxWidth: 340, backgroundColor: C.panel, borderRadius: 14, borderWidth: 1, borderColor: C.panelEdge, padding: 12, marginBottom: 8 },
+  seedT: { color: C.text, fontWeight: '700', fontSize: 13 },
+  seedD: { color: C.dim, fontSize: 11, marginTop: 2 },
+  seedGo: { color: C.pink, fontSize: 24, paddingHorizontal: 6 },
+  mine: { marginTop: 14, height: 44, width: '100%', maxWidth: 340, borderRadius: 22, borderWidth: 1, borderColor: C.panelEdge, alignItems: 'center', justifyContent: 'center' },
+  mineT: { color: C.text, fontWeight: '700' },
   msg: { color: C.danger, marginTop: 10, fontSize: 13, textAlign: 'center' },
 });

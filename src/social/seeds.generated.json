@@ -1,0 +1,52 @@
+[
+ {
+  "title": "First Drop: Speed mode",
+  "depth": 1,
+  "code": "RS1.eyJlIjoxLCJiIjoiTDAxIiwibCI6W1syLDUwMCxbWzAsNTYsMjc0LDIxXV1dXSwicCI6W1swLDU3LDE5NCw0MF1dfQ.oarmpe"
+ },
+ {
+  "title": "The Ledge: Duplicate → Speed mode",
+  "depth": 2,
+  "code": "RS1.eyJlIjoxLCJiIjoiTDAyIiwibCI6W1sxLDUxNyxbWzAsMTYwLDI3Miw2XV1dLFsyLDUxOCxbWzAsMTU2LDI4MSwxMl1dXV0sInAiOltbMCwxMTIsMjk4LDE2XV19.1a84jkv"
+ },
+ {
+  "title": "Pinball Wizard: Teleport → Duplicate",
+  "depth": 2,
+  "code": "RS1.eyJlIjoxLCJiIjoiTDAzIiwibCI6W1szLDUzNCxbWzAsMjc5LDQ2Niw1NF1dXSxbMSw1MzUsW1swLDI3Miw0NzMsNTJdXV1dLCJwIjpbWzAsMjkyLDEzNyw1Ml1dfQ.1qgpye1"
+ },
+ {
+  "title": "Funnel Vision: Reverse gravity → Speed mode → Duplicate",
+  "depth": 3,
+  "code": "RS1.eyJlIjoxLCJiIjoiTDA0IiwibCI6W1swLDU1MSxbWzAsMzIsMjI5LDM5XSxbMSwzOCwyOTQsNjNdXV0sWzIsNTUyLFtbMCwxMjcsMzI4LDMwXSxbMSw0Miw1MzEsNTJdXV0sWzEsNTUzLFtbMCw4Myw0ODgsNTRdLFsxLDExMCwxMTksNDVdXV1dLCJwIjpbWzAsODYsNTA1LDUzXSxbMSw4NCw5MCw3XV19.y4pqkj"
+ },
+ {
+  "title": "Zig Zag: Teleport → Teleport",
+  "depth": 2,
+  "code": "RS1.eyJlIjoxLCJiIjoiTDA1IiwibCI6W1szLDU2OCxbWzAsMjI0LDU2NCw5XSxbMSwxMzYsMTIxLDZdXV0sWzMsNTY5LFtbMCw1Miw0MDksMjNdLFsxLDMxNyw1NjgsMjddXV1dLCJwIjpbWzAsMzE0LDM4OCwzMF0sWzEsNjUsNDcyLDIzXV19.liovzp"
+ },
+ {
+  "title": "Home Cup: Duplicate → Teleport → Speed mode",
+  "depth": 3,
+  "code": "RS1.eyJlIjoxLCJiIjoiTDA2IiwibCI6W1sxLDU4NSxbWzAsMzI4LDMwOCwxNV0sWzEsMjk4LDE3OSw1NV1dXSxbMyw1ODYsW1swLDI4Miw4OCw1N11dXSxbMiw1ODcsW1swLDMyOCwzMjMsNDBdLFsxLDI0NSwyMjAsNTNdXV1dLCJwIjpbWzAsMzIyLDI5MSwzNV0sWzEsMzI3LDExOCw2M11dfQ.nesm1l"
+ },
+ {
+  "title": "Trampoline Park: Reverse gravity → Duplicate",
+  "depth": 2,
+  "code": "RS1.eyJlIjoxLCJiIjoiTDA3IiwibCI6W1swLDYwMixbWzAsNzIsMzUyLDM5XSxbMSwxOTUsMTk1LDU4XV1dLFsxLDYwMyxbWzAsMjEyLDU2OCwxNV0sWzEsMjk4LDEyMiwyM11dXV0sInAiOltbMCwyMjIsNTMyLDhdLFsxLDMyNiw0ODMsNDddXX0.101h103"
+ },
+ {
+  "title": "Bumper Cars: Speed mode → Duplicate → Teleport → Reverse gravity",
+  "depth": 4,
+  "code": "RS1.eyJlIjoxLCJiIjoiTDA4IiwibCI6W1syLDYxOSxbWzAsMzIsNTY4LDYxXV1dLFsxLDYyMCxbWzAsMzIsNDY2LDUyXSxbMSwxNzksMzU2LDQ3XV1dLFszLDYyMSxbWzAsNzQsMTQ0LDldLFsxLDMxNyw0NjUsMzVdXV0sWzAsNjIyLFtbMCwxMzMsMTE3LDQ1XSxbMSwxNjUsMzc5LDEyXV1dXSwicCI6W1swLDE5Myw5Miw2M10sWzEsNTgsNTM5LDYwXV19.1emvup4"
+ },
+ {
+  "title": "Long Way Down: Teleport → Speed mode → Duplicate",
+  "depth": 3,
+  "code": "RS1.eyJlIjoxLCJiIjoiTDA5IiwibCI6W1szLDYzNixbWzAsNjAsMzg0LDM3XSxbMSwyMzcsNDI5LDMzXSxbMiw5NSwzODcsMzZdXV0sWzIsNjM3LFtbMCwyMTcsNDA0LDUwXSxbMSwzOCwyNTQsM11dXSxbMSw2MzgsW1swLDEwMSwzMzMsMTBdLFsyLDI2OCwzNzUsMjVdXV1dLCJwIjpbWzAsMTg5LDM5OSwxM10sWzEsNDUsMzU3LDE2XSxbMiwzMjgsNDQwLDUzXV19.3kkvzv"
+ },
+ {
+  "title": "The Needle: Duplicate → Speed mode",
+  "depth": 2,
+  "code": "RS1.eyJlIjoxLCJiIjoiTDEwIiwibCI6W1sxLDY1MyxbWzAsMTgwLDU2OCw2MF0sWzEsMjc5LDQ2Niw1NF1dXSxbMiw2NTQsW1swLDU4LDU2OCw2M10sWzEsMjIxLDQzOCw0OV1dXV0sInAiOltbMCwyNDMsNDM5LDU2XSxbMSw2NSw0MjgsMzZdXX0.cq7mai"
+ }
+]

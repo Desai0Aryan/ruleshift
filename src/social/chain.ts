@@ -32,7 +32,7 @@ export type ChainCheck =
   | { ok: false; error: string };
 
 /** Rebuilds every level of the chain and verifies every stored solution. Treat chains as untrusted input. */
-export function checkChain(chain: Chain): ChainCheck {
+export function checkChain(chain: Chain, opts: { requireProof?: boolean } = {}): ChainCheck {
   if (chain.engine !== ENGINE_VERSION) return { ok: false, error: 'This challenge was made with a different game version.' };
   if (chain.links.length > MAX_CHAIN_DEPTH) return { ok: false, error: 'Chain too long.' };
   const base = getBaseLevel(chain.base);
@@ -49,6 +49,8 @@ export function checkChain(chain: Chain): ChainCheck {
     levels.push(next);
   }
   const last = levels[levels.length - 1];
+  // Server-delivered chains hide the proof (it would be the answer); the server verified it at publish time.
+  if (opts.requireProof === false && chain.proof.length === 0) return { ok: true, levels };
   const perr = validateSolution(last, chain.proof);
   if (perr) return { ok: false, error: `Proof: ${perr}` };
   if (!runSolution(last, chain.proof).won) return { ok: false, error: 'This puzzle can’t be solved.' };

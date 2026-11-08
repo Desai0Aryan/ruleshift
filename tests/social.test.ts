@@ -1,36 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { BASE_LEVELS, pinnedSolution } from '../src/game/levels';
 import { Rng } from '../src/game/rng';
-import { solve } from '../src/game/solver';
-import { checkChain, extendChain, startChain, type Chain } from '../src/social/chain';
+import { checkChain, type Chain } from '../src/social/chain';
+import { synthesizeChain } from '../src/social/synth';
 import { decodeChain, encodeChain } from '../src/social/codec';
 import { extractCode, shareMessage, shareUrl } from '../src/social/links';
-import { RULE_ORDER } from '../src/rules';
-import { verifyRuleSync } from '../src/rules/verify';
 
-/** Plays N hops with the solver standing in for human players. */
-function buildChain(baseIdx: number, hops: number): Chain {
-  const base = BASE_LEVELS[baseIdx];
-  let chain: Chain | null = null;
-  let level = base;
-  let solved = pinnedSolution(base.id)!;
-  for (let h = 0; h < hops; h++) {
-    let picked = null as ReturnType<typeof verifyRuleSync> | null;
-    for (let k = 0; k < RULE_ORDER.length && !(picked && picked.status === 'ok'); k++) {
-      picked = verifyRuleSync(level, RULE_ORDER[(h + k) % RULE_ORDER.length], { budget: 4000, baseSeed: 100 + h });
-    }
-    if (!picked || picked.status !== 'ok') throw new Error('no rule offerable');
-    const rule = picked.level.rules.at(-1)!;
-    chain = chain
-      ? extendChain(chain, rule.id, rule.seed, solved, picked.solution)
-      : startChain(base.id, rule.id, rule.seed, solved, picked.solution);
-    level = picked.level;
-    const next = solve(level, { seed: 2, budget: 6000 });
-    if (!next.solved) throw new Error('player solver failed');
-    solved = next.solution;
-  }
-  return chain!;
-}
+const buildChain = (baseIdx: number, hops: number) => synthesizeChain(baseIdx, hops);
 
 describe('chains', () => {
   const chain = buildChain(0, 5);
@@ -86,5 +61,17 @@ describe('chains', () => {
     expect(extractCode(msg)).toBe(code);
     expect(extractCode(shareUrl(code))).toBe(code);
     expect(extractCode('hello there')).toBeNull();
+  });
+});
+
+import { SEED_CHAINS } from '../src/social/seeds';
+describe('designer seed chains (cold-start content)', () => {
+  it('ships at least 8, all decode and verify end to end', () => {
+    expect(SEED_CHAINS.length).toBeGreaterThanOrEqual(8);
+    for (const s of SEED_CHAINS) {
+      const d = decodeChain(s.code);
+      expect(d.ok, s.title).toBe(true);
+      if (d.ok) { expect(checkChain(d.chain).ok, s.title).toBe(true); expect(d.chain.links.length).toBe(s.depth); }
+    }
   });
 });

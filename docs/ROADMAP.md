@@ -4,7 +4,7 @@ Built in Part 1: engine, 4 rules, solver + anti-collapse verification, 12 levels
 
 | Part | Scope |
 |---|---|
-| 2 | Supabase: accounts (anonymous first), chains stored server-side, friend links/deep links, server re-verification, strip proofs from codes, push on "your turn" |
+| 2 | DONE (needs your Supabase/domain to go live): server-verified chains, short links, GIF export, seeds, My chains. Left for later: push notifications on "your turn", web player for short links |
 | 3 | Rules 5-10 (gravity-zones, bigger/smaller, bounce, wind, time-slow, mirror), more levels, daily puzzle, level editor |
 | 4 | AdMob (rewarded hints, break interstitials), RevenueCat (remove ads, rule packs), PostHog, A/B config |
 | 5 | Juice/polish pass: art direction, music, onboarding, accessibility, localisation, App Store assets |

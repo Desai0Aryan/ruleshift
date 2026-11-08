@@ -10,6 +10,7 @@ import type { Solution } from '../game/types';
 import { RULES } from '../rules';
 import type { Chain } from '../social/chain';
 import { encodeChain } from '../social/codec';
+import { getRepository } from '../social';
 import { type Challenge, challengeFromBase } from '../social/flow';
 import { track } from '../telemetry';
 import { gameFeedback } from './feedback';
@@ -20,7 +21,7 @@ import { C } from './theme';
 import { fitView, toWorld, type View as WView } from './view';
 
 type Drag = { i: number; mode: 'move' | 'rotate'; dx: number; dy: number };
-type Sheet = null | { kind: 'rules'; solved: Solution } | { kind: 'send'; chain: Chain };
+type Sheet = null | { kind: 'rules'; solved: Solution } | { kind: 'publishing' } | { kind: 'failed'; message: string } | { kind: 'send'; chain: Chain; message: string; remote: boolean; nodeId?: string };
 
 export function PlayScreen({ challenge }: { challenge: Challenge }) {
   const insets = useSafeAreaInsets();
@@ -74,6 +75,7 @@ export function PlayScreen({ challenge }: { challenge: Challenge }) {
         sheetShown.current = true;
         if (challenge.source === 'campaign') markSolved(challenge.level.base);
         track('level_solved', { level: challenge.level.base, attempts: ctl.attempts, depth: challenge.depth });
+        void getRepository().event(challenge, challenge.nodeId, 'solve');
         setSheet({ kind: 'rules', solved: ctl.solution.map((p) => ({ ...p })) });
       }
       const v = viewRef.current;
@@ -147,10 +149,11 @@ export function PlayScreen({ challenge }: { challenge: Challenge }) {
     else ctl.reset();
     bump();
   };
-  const hint = () => {
+  const hint = async () => {
     if (ctl.phase !== 'edit') return;
-    const next = challenge.hint.find((p) => !ctl.placed[p.i]) ?? challenge.hint[0];
-    if (!next) return;
+    const answer = await getRepository().hint(challenge);
+    const next = answer.find((p) => !ctl.placed[p.i]) ?? answer[0];
+    if (!next) { setToast('No hint available right now'); setTimeout(() => setToast(''), 1800); return; }
     ctl.ghost = next;
     track('hint_used', { level: challenge.level.base });
     setToast('Hint: try a piece here');
@@ -210,11 +213,30 @@ export function PlayScreen({ challenge }: { challenge: Challenge }) {
               nextLabel="Next level"
               onNext={challenge.source === 'campaign' && nextIdx < BASE_LEVELS.length ? goNext : undefined}
               onHome={home}
-              onChosen={(chain) => setSheet({ kind: 'send', chain })}
+              onChosen={async (chain) => {
+                setSheet({ kind: 'publishing' });
+                try {
+                  const r = await getRepository().publish(chain, challenge.nodeId ?? null);
+                  setSheet({ kind: 'send', chain, message: r.message, remote: r.remote, nodeId: r.remote ? r.id : undefined });
+                } catch (e) {
+                  track('publish_failed');
+                  setSheet({ kind: 'failed', message: e instanceof Error ? e.message : 'Couldn\u2019t send that.' });
+                }
+              }}
             />
+          ) : sheet.kind === 'publishing' ? (
+            <View style={s.status}><Text style={s.statusT}>Checking and sending{'\u2026'}</Text></View>
+          ) : sheet.kind === 'failed' ? (
+            <View style={s.status}>
+              <Text style={s.statusT}>{sheet.message}</Text>
+              <Pressable style={s.statusBtn} onPress={() => setSheet({ kind: 'rules', solved: ctl.solution.map((p) => ({ ...p })) })}><Text style={s.statusBtnT}>Pick another twist</Text></Pressable>
+            </View>
           ) : (
             <SendSheet
               chain={sheet.chain}
+              message={sheet.message}
+              remote={sheet.remote}
+              nodeId={sheet.nodeId}
               onHome={home}
               onReplay={() => router.push({ pathname: '/replay', params: { code: encodeChain(sheet.chain) } })}
             />
@@ -241,6 +263,10 @@ const s = StyleSheet.create({
   go: { minWidth: 104, height: 48, borderRadius: 24, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center', shadowColor: C.accent, shadowOpacity: 0.6, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
   retry: { backgroundColor: C.pink, shadowColor: C.pink },
   goT: { color: '#fff', fontWeight: '800', fontSize: 16, letterSpacing: 0.5 },
+  status: { backgroundColor: '#141944', borderTopLeftRadius: 26, borderTopRightRadius: 26, borderWidth: 1, borderColor: C.panelEdge, padding: 24, paddingBottom: 40, alignItems: 'center', gap: 14 },
+  statusT: { color: C.text, fontSize: 16, textAlign: 'center' },
+  statusBtn: { height: 44, paddingHorizontal: 22, borderRadius: 22, backgroundColor: C.accent, alignItems: 'center', justifyContent: 'center' },
+  statusBtnT: { color: '#fff', fontWeight: '700' },
   toast: { position: 'absolute', alignSelf: 'center', bottom: 110, backgroundColor: '#000c', borderRadius: 99, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: C.panelEdge },
   toastT: { color: C.text, fontSize: 13 },
   modal: { ...StyleSheet.absoluteFill, justifyContent: 'flex-end', backgroundColor: '#050716aa' },

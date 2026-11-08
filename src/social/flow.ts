@@ -15,6 +15,8 @@ export interface Challenge {
   /** 1-based hop number the player is about to add */
   depth: number;
   source: 'campaign' | 'friend';
+  /** server node this puzzle came from (remote challenges only) */
+  nodeId?: string;
 }
 
 export function challengeFromBase(id: string): Challenge | null {
@@ -23,12 +25,15 @@ export function challengeFromBase(id: string): Challenge | null {
   return { level, chain: null, hint: pinnedSolution(id) ?? [], depth: 1, source: 'campaign' };
 }
 
-export function challengeFromChain(chain: Chain): { ok: true; challenge: Challenge } | { ok: false; error: string } {
-  const c = checkChain(chain);
+export function challengeFromChain(
+  chain: Chain,
+  opts: { nodeId?: string; proofHidden?: boolean } = {},
+): { ok: true; challenge: Challenge } | { ok: false; error: string } {
+  const c = checkChain(chain, { requireProof: !opts.proofHidden });
   if (!c.ok) return c;
   return {
     ok: true,
-    challenge: { level: c.levels[c.levels.length - 1], chain, hint: chain.proof, depth: chain.links.length + 1, source: 'friend' },
+    challenge: { level: c.levels[c.levels.length - 1], chain, hint: chain.proof, depth: chain.links.length + 1, source: 'friend', nodeId: opts.nodeId },
   };
 }
 

@@ -9,8 +9,8 @@
 3. Apple Developer Program account ($99/yr). Tell me your Team ID; we set `ios.bundleIdentifier` (currently the placeholder `com.example.ruleshift`).
 4. A free Expo account for EAS builds.
 
-**Part 2 (backend / friend links)**
-5. Supabase project (URL + anon key). 6. A domain for share links (set `SHARE_HOST` in `src/social/links.ts`, add the apple-app-site-association file).
+**Part 2 (now built; needs YOUR accounts to switch on)**
+5. Supabase project, follow `docs/BACKEND_SETUP.md` (URL + anon key into `.env`). 6. A domain for share links, host `site/`, set `SHARE_HOST`, edit the apple-app-site-association file with your Team ID.
 
 **Part 4 (money)**
 7. AdMob account + app IDs. 8. RevenueCat account + App Store Connect products. 9. PostHog project key (plugs into `setSink` in `src/telemetry`).
