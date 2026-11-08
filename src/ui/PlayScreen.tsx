@@ -16,6 +16,7 @@ import { track } from '../telemetry';
 import { gameFeedback } from './feedback';
 import { renderScene } from './skiaScene';
 import { RulePickerSheet, SendSheet } from './Sheets';
+import { recordDailySolve } from '../daily/store';
 import { markSolved } from './store';
 import { C } from './theme';
 import { fitView, toWorld, type View as WView } from './view';
@@ -74,6 +75,13 @@ export function PlayScreen({ challenge }: { challenge: Challenge }) {
       if (ctl.phase === 'won' && ctl.phaseTime > 1.0 && !sheetShown.current) {
         sheetShown.current = true;
         if (challenge.source === 'campaign') markSolved(challenge.level.base);
+        if (challenge.source === 'daily' && 'day' in challenge) {
+          const day = (challenge as { day: number }).day;
+          const prog = recordDailySolve(day, { attempts: ctl.attempts, pieces: ctl.solution.length });
+          track('daily_solved', { attempts: ctl.attempts, streak: prog.streak });
+          setToast(prog.streak >= 2 ? `\uD83D\uDD25 ${prog.streak}-day streak!` : 'Daily solved!');
+          setTimeout(() => setToast(''), 2200);
+        }
         track('level_solved', { level: challenge.level.base, attempts: ctl.attempts, depth: challenge.depth });
         void getRepository().event(challenge, challenge.nodeId, 'solve');
         setSheet({ kind: 'rules', solved: ctl.solution.map((p) => ({ ...p })) });
@@ -163,7 +171,9 @@ export function PlayScreen({ challenge }: { challenge: Challenge }) {
   const goNext = () => router.replace({ pathname: '/play', params: { level: BASE_LEVELS[nextIdx].id } });
 
   const idx = BASE_LEVELS.findIndex((l) => l.id === challenge.level.base);
-  const sub = challenge.source === 'friend'
+  const sub = challenge.source === 'daily'
+    ? `Daily puzzle \u00b7 ${challenge.chain!.links.length} twist${challenge.chain!.links.length === 1 ? '' : 's'}`
+    : challenge.source === 'friend'
     ? `Friend's puzzle · ${challenge.chain!.links.length} change${challenge.chain!.links.length === 1 ? '' : 's'}`
     : `Level ${idx + 1}`;
   const phase = ctl.phase;

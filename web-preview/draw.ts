@@ -66,7 +66,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, v: View, ctl: PlayContr
   // statics
   for (const s of L.segments) {
     line(ctx, { ...v, scale: 1 }, s.ax, s.ay, s.bx, s.by, s.r * 2, C.wall);
-    line(ctx, { ...v, scale: 1 }, s.ax, s.ay, s.bx, s.by, s.r * 0.8, C.wallEdge);
+    line(ctx, { ...v, scale: 1 }, s.ax, s.ay, s.bx, s.by, s.r * 0.8, s.e >= 0.85 ? '#ff9f5a' : C.wallEdge);
   }
   for (const d of L.discs) {
     const bg = ctx.createRadialGradient(d.x, d.y, 0, d.x, d.y, d.r * 1.8);
@@ -126,6 +126,15 @@ export function drawScene(ctx: CanvasRenderingContext2D, v: View, ctl: PlayContr
       ctx.fillStyle = C.ball; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, 7); ctx.fill();
       ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.arc(b.x - b.r * 0.3, b.y - b.r * 0.35, b.r * 0.32, 0, 7); ctx.fill();
     });
+  }
+
+  // wind streaks
+  if (L.gravity.x !== 0) {
+    const dir = L.gravity.x > 0 ? 1 : -1;
+    ctx.strokeStyle = 'rgba(155,231,255,0.28)'; ctx.lineWidth = 0.7;
+    for (let y = 28; y < L.h - 10; y += 24) for (let x = 14 + ((y / 24) % 2) * 14; x < L.w - 10; x += 28) {
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + dir * 9, y); ctx.lineTo(x + dir * 6.5, y - 2); ctx.moveTo(x + dir * 9, y); ctx.lineTo(x + dir * 6.5, y + 2); ctx.stroke();
+    }
   }
 
   // gravity arrow

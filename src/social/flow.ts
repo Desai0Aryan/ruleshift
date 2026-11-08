@@ -14,7 +14,7 @@ export interface Challenge {
   hint: Solution;
   /** 1-based hop number the player is about to add */
   depth: number;
-  source: 'campaign' | 'friend';
+  source: 'campaign' | 'friend' | 'daily';
   /** server node this puzzle came from (remote challenges only) */
   nodeId?: string;
 }

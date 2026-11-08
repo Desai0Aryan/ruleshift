@@ -2,7 +2,7 @@ import * as Clipboard from 'expo-clipboard';
 import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import type { Solution } from '../game/types';
-import { RULE_ORDER, RULES } from '../rules';
+import { dealHand, ICON_GLYPH, RULES } from '../rules';
 import { verifyRule, type Verdict } from '../rules/verify';
 import type { Chain } from '../social/chain';
 import { type Challenge, passItOn } from '../social/flow';
@@ -13,7 +13,6 @@ import { track } from '../telemetry';
 import { C } from './theme';
 
 const getRepoIsOnlineCapable = () => backendEnabled;
-const GLYPH = { gravity: '⇅', twin: '●●', speed: '»', portal: '◎' } as const;
 
 interface RowState { status: 'checking' | 'ok' | 'no'; text: string; progress: number; verdict?: Verdict }
 
@@ -26,18 +25,20 @@ export function RulePickerSheet(props: {
   onChosen: (chain: Chain) => void;
 }) {
   const { challenge, solved } = props;
-  const [rows, setRows] = useState<Record<string, RowState>>(() =>
-    Object.fromEntries(RULE_ORDER.map((id) => [id, { status: 'checking', text: 'checking…', progress: 0 } as RowState])));
+  const [deal, setDeal] = useState(() => (Date.now() & 0xffff) + 1);
+  const hand = dealHand(deal, 4);
+  const [rows, setRows] = useState<Record<string, RowState>>({});
   const alive = useRef(true);
 
   useEffect(() => {
     alive.current = true;
     const baseSeed = (Date.now() & 0xffff) + 1;
-    RULE_ORDER.forEach((id) => {
+    setRows(Object.fromEntries(dealHand(deal, 4).map((id) => [id, { status: 'checking', text: 'checking…', progress: 0 } as RowState])));
+    dealHand(deal, 4).forEach((id) => {
       verifyRule(challenge.level, id, {
         baseSeed,
         budget: 4500,
-        onProgress: (f) => alive.current && setRows((r) => (r[id].status === 'checking' ? { ...r, [id]: { ...r[id], progress: f } } : r)),
+        onProgress: (f) => alive.current && setRows((r) => (r[id]?.status === 'checking' ? { ...r, [id]: { ...r[id], progress: f } } : r)),
       }).then((v) => {
         if (!alive.current) return;
         if (v.status !== 'ok') track('rule_unavailable', { rule: id, why: v.status });
@@ -45,10 +46,10 @@ export function RulePickerSheet(props: {
       });
     });
     return () => { alive.current = false; };
-  }, [challenge]);
+  }, [challenge, deal]);
 
   const choose = (id: string) => {
-    const v = rows[id].verdict;
+    const v = rows[id]?.verdict;
     if (!v || v.status !== 'ok') return;
     const applied = v.level.rules[v.level.rules.length - 1];
     track('rule_picked', { rule: applied.id, depth: challenge.depth });
@@ -58,14 +59,14 @@ export function RulePickerSheet(props: {
   return (
     <View style={s.sheet}>
       <Text style={s.h2}>Solved! {'✨'} Change ONE rule</Text>
-      <Text style={s.p}>{challenge.source === 'friend' ? 'Add your twist and pass it on.' : 'Pick a twist, then send it to a friend.'} We check every twist is still solvable.</Text>
-      {RULE_ORDER.map((id) => {
+      <Text style={s.p}>{challenge.source !== 'campaign' ? 'Add your twist and pass it on.' : 'Pick a twist, then send it to a friend.'} We check every twist is still solvable.</Text>
+      {hand.map((id) => {
         const r = RULES[id];
-        const st = rows[id];
+        const st = rows[id] ?? { status: 'checking', text: 'checking…', progress: 0 };
         return (
           <Pressable key={id} disabled={st.status !== 'ok'} onPress={() => choose(id)}
             style={({ pressed }) => [s.rule, { borderColor: r.color, opacity: st.status === 'no' ? 0.45 : 1, borderStyle: st.status === 'no' ? 'dashed' : 'solid', transform: [{ scale: pressed ? 0.98 : 1 }] }]}>
-            <View style={[s.glyph, { backgroundColor: r.color }]}><Text style={s.glyphT}>{GLYPH[r.icon]}</Text></View>
+            <View style={[s.glyph, { backgroundColor: r.color }]}><Text style={s.glyphT}>{ICON_GLYPH[r.icon]}</Text></View>
             <View style={{ flex: 1 }}>
               <Text style={s.rname}>{r.name}</Text>
               <Text style={s.rblurb}>{r.blurb}</Text>
@@ -76,6 +77,7 @@ export function RulePickerSheet(props: {
         );
       })}
       <View style={s.row}>
+        <Pressable style={s.btn} onPress={() => { track('hand_reroll', { depth: challenge.depth }); setDeal((d) => d + 1); }}><Text style={s.btnT}>{'\u21BB'} New hand</Text></Pressable>
         {props.onNext && <Pressable style={s.btn} onPress={props.onNext}><Text style={s.btnT}>{props.nextLabel ?? 'Next'} {'›'}</Text></Pressable>}
         <Pressable style={s.btn} onPress={props.onHome}><Text style={s.btnT}>Home</Text></Pressable>
       </View>

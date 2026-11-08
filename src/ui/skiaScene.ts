@@ -56,7 +56,19 @@ function buildStatic(l: Level, v: View): SkPicture {
   c.drawRRect(Skia.RRectXY(Skia.XYWHRect(0, 0, l.w, l.h), 3, 3), paint);
   for (const s of l.segments) {
     stroke(C.wall, s.r * 2); c.drawLine(s.ax, s.ay, s.bx, s.by, paint);
-    stroke(C.wallEdge, s.r * 0.8); c.drawLine(s.ax, s.ay, s.bx, s.by, paint);
+    stroke(s.e >= 0.85 ? '#ff9f5a' : C.wallEdge, s.r * 0.8); c.drawLine(s.ax, s.ay, s.bx, s.by, paint);
+  }
+  if (l.gravity.x !== 0) {
+    // wind streaks: faint arrows showing which way the world is being pushed
+    const dir = l.gravity.x > 0 ? 1 : -1;
+    for (let y = 28; y < l.h - 10; y += 24) {
+      for (let x = 14 + ((y / 24) % 2) * 14; x < l.w - 10; x += 28) {
+        stroke('#9be7ff', 0.7, 0.28);
+        c.drawLine(x, y, x + dir * 9, y, paint);
+        c.drawLine(x + dir * 9, y, x + dir * 6.5, y - 2, paint);
+        c.drawLine(x + dir * 9, y, x + dir * 6.5, y + 2, paint);
+      }
+    }
   }
   for (const d of l.discs) {
     glow(c, d.x, d.y, d.r, C.bumper, 0.35);

@@ -15,7 +15,9 @@ export interface Zone { x: number; y: number; w: number; h: number }
 /** One applied rule. (id, seed) fully determines the transformation. */
 export interface RuleApplication { id: RuleId; seed: number }
 
-export type RuleId = 'reverse_gravity' | 'duplicate' | 'speed' | 'teleport';
+export type RuleId =
+  | 'reverse_gravity' | 'duplicate' | 'speed' | 'teleport'
+  | 'rubber' | 'wind' | 'mirror' | 'resize' | 'moon' | 'bumper';
 
 export interface Level {
   id: string;

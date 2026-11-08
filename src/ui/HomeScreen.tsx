@@ -1,9 +1,12 @@
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { dailyNumber, dailyShareText, dayIndex, weekday } from '../daily/daily';
+import { liveStreak } from '../daily/progress';
+import { loadDailyProgress, useDailyProgress } from '../daily/store';
 import { BASE_LEVELS } from '../game/levels';
 import { getRepository } from '../social';
 import { SEED_CHAINS } from '../social/seeds';
@@ -24,6 +27,11 @@ export function HomeScreen() {
   const { solved } = useAppState();
   const [text, setText] = useState('');
   const [msg, setMsg] = useState('');
+  const daily = useDailyProgress();
+  useEffect(() => { void loadDailyProgress(); }, []);
+  const today = dayIndex();
+  const live = liveStreak(daily.p, today);
+  const todayResult = daily.p.results[String(today)];
   const next = BASE_LEVELS.find((l) => !solved.includes(l.id)) ?? BASE_LEVELS[0];
 
   return (
@@ -35,6 +43,19 @@ export function HomeScreen() {
 
         <Pressable style={s.cta} onPress={() => router.push({ pathname: '/play', params: { level: next.id } })}>
           <Text style={s.ctaT}>{solved.length === 0 ? 'Play' : 'Continue'}</Text>
+        </Pressable>
+
+        <Pressable style={[s.daily, live.doneToday && { borderColor: C.mint }]} onPress={() => router.push('/daily')} accessibilityLabel="Daily puzzle">
+          <View style={{ flex: 1 }}>
+            <Text style={s.dailyH}>Daily #{dailyNumber(today)} <Text style={s.dailyTier}>{['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][weekday(today)]}</Text></Text>
+            <Text style={s.dailyD}>
+              {live.doneToday ? 'Solved \u2713 Come back tomorrow' : live.atRisk ? (live.usesFreeze ? `Streak ${live.streak} \u00b7 a freeze will cover yesterday` : `Keep your ${live.streak}-day streak alive`) : 'Same puzzle for everyone today'}
+            </Text>
+          </View>
+          {live.streak > 0 && <Text style={s.fire}>{'\uD83D\uDD25'} {live.streak}</Text>}
+          {live.doneToday && todayResult
+            ? <Pressable style={s.shareBtn} onPress={() => { track('daily_shared'); void Share.share({ message: dailyShareText(today, todayResult, live.streak) }); }}><Text style={s.shareT}>Share</Text></Pressable>
+            : <Text style={s.seedGo}>{'\u203A'}</Text>}
         </Pressable>
 
         <View style={s.grid}>
@@ -85,6 +106,13 @@ const s = StyleSheet.create({
   lv: { width: '22.5%', aspectRatio: 1, borderRadius: 16, backgroundColor: C.panel, borderWidth: 1, borderColor: C.panelEdge, alignItems: 'center', justifyContent: 'center' },
   lvT: { color: C.text, fontWeight: '800', fontSize: 18 },
   tick: { position: 'absolute', right: 7, top: 3, color: C.mint, fontSize: 11 },
+  daily: { flexDirection: 'row', alignItems: 'center', width: '100%', maxWidth: 340, backgroundColor: C.panel, borderRadius: 18, borderWidth: 1.5, borderColor: C.pink, padding: 14, marginBottom: 18, gap: 8 },
+  dailyH: { color: C.text, fontWeight: '800', fontSize: 16 },
+  dailyTier: { color: C.dim, fontWeight: '600', fontSize: 12 },
+  dailyD: { color: C.dim, fontSize: 12, marginTop: 3 },
+  fire: { color: '#ffb347', fontWeight: '800', fontSize: 16 },
+  shareBtn: { paddingHorizontal: 14, height: 34, borderRadius: 17, backgroundColor: C.mint, alignItems: 'center', justifyContent: 'center' },
+  shareT: { color: '#0f1226', fontWeight: '800', fontSize: 13 },
   paste: { flexDirection: 'row', gap: 8, width: '100%', maxWidth: 340 },
   input: { flex: 1, height: 44, borderRadius: 12, borderWidth: 1, borderColor: C.panelEdge, backgroundColor: C.panel, color: C.text, paddingHorizontal: 12, fontSize: 14 },
   pbtn: { height: 44, paddingHorizontal: 16, borderRadius: 12, backgroundColor: C.panel, borderWidth: 1, borderColor: C.pink, alignItems: 'center', justifyContent: 'center' },

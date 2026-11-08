@@ -8,7 +8,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export type EventName =
   | 'app_open' | 'level_start' | 'attempt' | 'level_solved' | 'hint_used'
   | 'rule_picked' | 'rule_unavailable' | 'share_tapped' | 'copy_tapped'
-  | 'challenge_opened' | 'challenge_invalid' | 'replay_watched' | 'gif_export' | 'seed_opened' | 'publish_failed';
+  | 'challenge_opened' | 'challenge_invalid' | 'replay_watched' | 'gif_export' | 'seed_opened' | 'publish_failed'
+  | 'hand_reroll' | 'daily_started' | 'daily_solved' | 'daily_shared';
 
 export interface TelemetryRecord { t: number; name: EventName; props?: Record<string, string | number | boolean> }
 

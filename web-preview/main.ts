@@ -2,7 +2,9 @@ import { PlayController, type GameEvent } from '../src/game/controller';
 import { BASE_LEVELS } from '../src/game/levels';
 import { ChainReplay, replayStages } from '../src/game/replay';
 import type { Solution } from '../src/game/types';
-import { RULE_ORDER, RULES } from '../src/rules';
+import { dailyNumber, dayIndex, getDailyChallenge } from '../src/daily/daily';
+import { liveStreak, parseProgress, recordSolve } from '../src/daily/progress';
+import { dealHand, ICON_GLYPH, RULES } from '../src/rules';
 import { verifyRule, type Verdict } from '../src/rules/verify';
 import { encodeChain, decodeChain } from '../src/social/codec';
 import { challengeFromBase, challengeFromChain, passItOn, type Challenge } from '../src/social/flow';
@@ -66,7 +68,15 @@ function showHome(msg = '') {
     grid.appendChild(b);
   });
   $('playBtn').textContent = solvedSet.size === 0 ? 'Play' : 'Continue';
+  const lv = liveStreak(loadDaily(), dayIndex());
+  $('dailyBtn').textContent = `Daily #${dailyNumber(dayIndex())}${lv.doneToday ? ' \u2713' : ''}${lv.streak > 0 ? ` \uD83D\uDD25${lv.streak}` : ''}`;
 }
+
+function loadDaily() { try { return parseProgress(localStorage.getItem('rs.daily')); } catch { return parseProgress(null); } }
+$('dailyBtn').onclick = async () => {
+  const b = $('dailyBtn'); b.textContent = 'Building\u2026';
+  try { startChallenge(await getDailyChallenge(dayIndex())); } catch (e) { showHome('Daily failed: ' + String(e)); }
+};
 
 function startChallenge(ch: Challenge) {
   challenge = ch;
@@ -80,7 +90,7 @@ function startChallenge(ch: Challenge) {
   $('banner').classList.add('hidden');
   closeModal();
   const idx = BASE_LEVELS.findIndex((l) => l.id === ch.level.base);
-  $('ttl').innerHTML = `${ch.level.name}<small>${ch.source === 'friend' ? `Friend's puzzle \u00b7 ${ch.chain!.links.length} change${ch.chain!.links.length === 1 ? '' : 's'}` : `Level ${idx + 1}`}</small>`;
+  $('ttl').innerHTML = `${ch.level.name}<small>${ch.source === 'daily' ? `Daily puzzle \u00b7 ${ch.chain!.links.length} twist${ch.chain!.links.length === 1 ? '' : 's'}` : ch.source === 'friend' ? `Friend's puzzle \u00b7 ${ch.chain!.links.length} change${ch.chain!.links.length === 1 ? '' : 's'}` : `Level ${idx + 1}`}</small>`;
   const chips = $('chips');
   chips.innerHTML = '';
   for (const r of ch.level.rules) {
@@ -225,26 +235,27 @@ function toast(msg: string) {
 function openModal(html: string) { $('sheet').innerHTML = html; $('modal').classList.remove('hidden'); modalOpen = true; }
 function closeModal() { $('modal').classList.add('hidden'); modalOpen = false; }
 
-const ICON: Record<string, string> = { gravity: '\u21C5', twin: '\u25CF\u25CF', speed: '\u00BB', portal: '\u25CE' };
 
 function showRulePicker() {
   if (!ctl || !challenge) return;
   const solved: Solution = ctl.solution.map((p) => ({ ...p }));
   const ch = challenge;
   if (ch.source === 'campaign') { solvedSet.add(ch.level.base); saveSolved(); }
+  if (ch.source === 'daily') { try { localStorage.setItem('rs.daily', JSON.stringify(recordSolve(loadDaily(), (ch as { day?: number }).day ?? dayIndex(), { attempts: ctl.attempts, pieces: ctl.solution.length }))); } catch { /* ignore */ } }
   const nextIdx = BASE_LEVELS.findIndex((l) => l.id === ch.level.base) + 1;
   openModal(`
     <h2>Solved! \u2728 Change ONE rule</h2>
-    <p>${ch.source === 'friend' ? 'Add your twist and pass it on.' : 'Pick a twist, then send it to a friend.'} We check every twist is still solvable.</p>
+    <p>${ch.source !== 'campaign' ? 'Add your twist and pass it on.' : 'Pick a twist, then send it to a friend.'} We check every twist is still solvable.</p>
     <div id="rules"></div>
     <div class="row">${ch.source === 'campaign' && nextIdx < BASE_LEVELS.length ? '<button class="btn" id="nextLv">Next level \u203A</button>' : ''}<button class="btn" id="homeBtn">Home</button></div>`);
   const holder = $('rules');
   const verdicts: Partial<Record<string, Verdict>> = {};
-  RULE_ORDER.forEach((id) => {
+  const dealSeed = (Date.now() & 0xffff) + 1;
+  dealHand(dealSeed, 4).forEach((id) => {
     const r = RULES[id];
     const b = document.createElement('button');
     b.className = 'rule'; b.disabled = true; b.style.setProperty('--c', r.color);
-    b.innerHTML = `<i>${ICON[r.icon]}</i><div><b>${r.name}</b><span>${r.blurb}</span></div><em>checking\u2026</em><div class="bar2"></div>`;
+    b.innerHTML = `<i>${ICON_GLYPH[r.icon]}</i><div><b>${r.name}</b><span>${r.blurb}</span></div><em>checking\u2026</em><div class="bar2"></div>`;
     holder.appendChild(b);
     verifyRule(ch.level, id, { baseSeed: (Date.now() & 0xffff) + 1, budget: 4500, onProgress: (f) => b.style.setProperty('--p', `${Math.round(f * 100)}%`) }).then((v) => {
       verdicts[id] = v;
