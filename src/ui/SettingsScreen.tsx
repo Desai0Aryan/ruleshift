@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useMoney } from '../monetization';
 import { clearTelemetry, exportJson, type GateSummary, summary } from '../telemetry';
 import { resetProgress, setHaptics, setSound, useAppState } from './store';
 import { C } from './theme';
@@ -12,6 +13,7 @@ const pct = (v: number | null) => (v === null ? '—' : `${Math.round(v * 100)}%
 export function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const st = useAppState();
+  const wallet = useMoney();
   const [sum, setSum] = useState<GateSummary | null>(null);
   const [note, setNote] = useState('');
   const refresh = () => { void summary().then(setSum); };
@@ -27,6 +29,13 @@ export function SettingsScreen() {
       <View style={s.card}>
         <View style={s.row}><Text style={s.label}>Sound</Text><Switch value={st.sound} onValueChange={setSound} /></View>
         <View style={s.row}><Text style={s.label}>Haptics</Text><Switch value={st.haptics} onValueChange={setHaptics} /></View>
+      </View>
+
+      <Text style={s.sec}>Hints &amp; shop</Text>
+      <View style={s.card}>
+        <Text style={s.stat}>Hints left: <Text style={s.val}>{wallet.hints}</Text>  <Text style={s.dim}>(+1 free every day)</Text></Text>
+        {wallet.storeAvailable && <Pressable style={s.btn} onPress={() => router.push('/store')}><Text style={s.btnT}>Shop &amp; restore purchases</Text></Pressable>}
+        {__DEV__ && <Text style={s.dim}>Debug: {wallet.adapters}</Text>}
       </View>
 
       <Text style={s.sec}>Playtest numbers (this device)</Text>

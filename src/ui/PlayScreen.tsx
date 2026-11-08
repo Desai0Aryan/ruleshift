@@ -15,14 +15,15 @@ import { type Challenge, challengeFromBase } from '../social/flow';
 import { track } from '../telemetry';
 import { gameFeedback } from './feedback';
 import { renderScene } from './skiaScene';
-import { RulePickerSheet, SendSheet } from './Sheets';
+import { HintSheet, RulePickerSheet, SendSheet } from './Sheets';
 import { recordDailySolve } from '../daily/store';
+import { money, useMoney } from '../monetization';
 import { markSolved } from './store';
 import { C } from './theme';
 import { fitView, toWorld, type View as WView } from './view';
 
 type Drag = { i: number; mode: 'move' | 'rotate'; dx: number; dy: number };
-type Sheet = null | { kind: 'rules'; solved: Solution } | { kind: 'publishing' } | { kind: 'failed'; message: string } | { kind: 'send'; chain: Chain; message: string; remote: boolean; nodeId?: string };
+type Sheet = null | { kind: 'rules'; solved: Solution } | { kind: 'hints' } | { kind: 'publishing' } | { kind: 'failed'; message: string } | { kind: 'send'; chain: Chain; message: string; remote: boolean; nodeId?: string };
 
 export function PlayScreen({ challenge }: { challenge: Challenge }) {
   const insets = useSafeAreaInsets();
@@ -34,6 +35,7 @@ export function PlayScreen({ challenge }: { challenge: Challenge }) {
   const [, bump] = useReducer((x: number) => x + 1, 0);
   const [picture, setPicture] = useState<SkPicture | null>(null);
   const [sheet, setSheet] = useState<Sheet>(null);
+  const wallet = useMoney();
   const [toast, setToast] = useState('');
   const selected = useRef<number | null>(null);
   const drag = useRef<Drag | null>(null);
@@ -82,6 +84,7 @@ export function PlayScreen({ challenge }: { challenge: Challenge }) {
           setToast(prog.streak >= 2 ? `\uD83D\uDD25 ${prog.streak}-day streak!` : 'Daily solved!');
           setTimeout(() => setToast(''), 2200);
         }
+        money().noteSolved();
         track('level_solved', { level: challenge.level.base, attempts: ctl.attempts, depth: challenge.depth });
         void getRepository().event(challenge, challenge.nodeId, 'solve');
         setSheet({ kind: 'rules', solved: ctl.solution.map((p) => ({ ...p })) });
@@ -159,16 +162,23 @@ export function PlayScreen({ challenge }: { challenge: Challenge }) {
   };
   const hint = async () => {
     if (ctl.phase !== 'edit') return;
+    if (money().getSnapshot().hints <= 0) { track('rewarded_offered'); money().refresh(); setSheet({ kind: 'hints' }); return; }
     const answer = await getRepository().hint(challenge);
     const next = answer.find((p) => !ctl.placed[p.i]) ?? answer[0];
     if (!next) { setToast('No hint available right now'); setTimeout(() => setToast(''), 1800); return; }
+    await money().spendHint(); // only charged when a hint was actually delivered
     ctl.ghost = next;
     track('hint_used', { level: challenge.level.base });
     setToast('Hint: try a piece here');
     setTimeout(() => setToast(''), 1800);
   };
-  const home = () => router.replace('/');
-  const goNext = () => router.replace({ pathname: '/play', params: { level: BASE_LEVELS[nextIdx].id } });
+  /** Leaving a SOLVED puzzle is the only place an interstitial may appear (never mid-puzzle). */
+  const leave = async (fn: () => void) => {
+    if (sheet) { try { if (await money().maybeShowInterstitial()) track('interstitial_shown'); } catch { /* never block */ } }
+    fn();
+  };
+  const home = () => void leave(() => router.replace('/'));
+  const goNext = () => void leave(() => router.replace({ pathname: '/play', params: { level: BASE_LEVELS[nextIdx].id } }));
 
   const idx = BASE_LEVELS.findIndex((l) => l.id === challenge.level.base);
   const sub = challenge.source === 'daily'
@@ -197,7 +207,10 @@ export function PlayScreen({ challenge }: { challenge: Challenge }) {
             <View key={k} style={[s.chip, { borderColor: RULES[r.id].color }]}><Text style={[s.chipT, { color: RULES[r.id].color }]}>{RULES[r.id].name}</Text></View>
           ))}
         </View>
-        <Pressable style={s.ibtn} onPress={hint} accessibilityLabel="Hint"><Text style={s.ibtnT}>{'💡'}</Text></Pressable>
+        <Pressable style={s.ibtn} onPress={hint} accessibilityLabel={`Hint, ${wallet.hints} left`}>
+          <Text style={s.ibtnT}>{'💡'}</Text>
+          <View style={s.badge}><Text style={s.badgeT}>{wallet.hints > 99 ? '99+' : wallet.hints}</Text></View>
+        </Pressable>
       </View>
 
       <View ref={tray} onLayout={measure} collapsable={false} style={[s.tray, { paddingBottom: insets.bottom + 12 }]}>
@@ -234,6 +247,8 @@ export function PlayScreen({ challenge }: { challenge: Challenge }) {
                 }
               }}
             />
+          ) : sheet.kind === 'hints' ? (
+            <HintSheet onClose={() => setSheet(null)} />
           ) : sheet.kind === 'publishing' ? (
             <View style={s.status}><Text style={s.statusT}>Checking and sending{'\u2026'}</Text></View>
           ) : sheet.kind === 'failed' ? (
@@ -263,6 +278,8 @@ const s = StyleSheet.create({
   bar: { position: 'absolute', left: 14, right: 14, flexDirection: 'row', alignItems: 'center', gap: 8 },
   ibtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: C.panel, borderWidth: 1, borderColor: C.panelEdge, alignItems: 'center', justifyContent: 'center' },
   ibtnT: { color: C.text, fontSize: 18 },
+  badge: { position: 'absolute', top: -5, right: -5, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: C.pink, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  badgeT: { color: '#0f1226', fontSize: 11, fontWeight: '800' },
   title: { color: C.text, fontWeight: '700', fontSize: 15 },
   sub: { color: C.dim, fontSize: 11, letterSpacing: 0.6, textTransform: 'uppercase' },
   chip: { borderWidth: 1, borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3 },

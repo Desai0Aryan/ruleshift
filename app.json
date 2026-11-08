@@ -31,7 +31,21 @@
     "scheme": "ruleshift",
     "backgroundColor": "#0b0e24",
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511",
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "userTrackingPermission": "This identifier will be used to show you ads that are more relevant to you. You can still play fully without it."
+        }
+      ],
+      [
+        "expo-tracking-transparency",
+        {
+          "userTrackingPermission": "This identifier will be used to show you ads that are more relevant to you. You can still play fully without it."
+        }
+      ]
     ],
     "splash": {
       "image": "./assets/splash-icon.png",

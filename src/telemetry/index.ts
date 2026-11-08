@@ -9,7 +9,8 @@ export type EventName =
   | 'app_open' | 'level_start' | 'attempt' | 'level_solved' | 'hint_used'
   | 'rule_picked' | 'rule_unavailable' | 'share_tapped' | 'copy_tapped'
   | 'challenge_opened' | 'challenge_invalid' | 'replay_watched' | 'gif_export' | 'seed_opened' | 'publish_failed'
-  | 'hand_reroll' | 'daily_started' | 'daily_solved' | 'daily_shared';
+  | 'hand_reroll' | 'daily_started' | 'daily_solved' | 'daily_shared'
+  | 'rewarded_offered' | 'rewarded_watched' | 'interstitial_shown' | 'store_opened' | 'purchase_started' | 'purchase_done' | 'purchase_failed' | 'restore_tapped';
 
 export interface TelemetryRecord { t: number; name: EventName; props?: Record<string, string | number | boolean> }
 

@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { dailyNumber, dailyShareText, dayIndex, weekday } from '../daily/daily';
 import { liveStreak } from '../daily/progress';
 import { loadDailyProgress, useDailyProgress } from '../daily/store';
+import { useMoney } from '../monetization';
 import { BASE_LEVELS } from '../game/levels';
 import { getRepository } from '../social';
 import { SEED_CHAINS } from '../social/seeds';
@@ -27,6 +28,7 @@ export function HomeScreen() {
   const { solved } = useAppState();
   const [text, setText] = useState('');
   const [msg, setMsg] = useState('');
+  const wallet = useMoney();
   const daily = useDailyProgress();
   useEffect(() => { void loadDailyProgress(); }, []);
   const today = dayIndex();
@@ -38,6 +40,7 @@ export function HomeScreen() {
     <LinearGradient colors={['#232a7a', C.bgTop, C.bgTop]} locations={[0, 0.55, 1]} style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={[s.wrap, { paddingTop: insets.top + 28, paddingBottom: insets.bottom + 24 }]} keyboardShouldPersistTaps="handled">
         <Pressable onPress={() => router.push('/settings')} style={[s.gear, { top: insets.top + 8 }]} accessibilityLabel="Settings"><Text style={s.gearT}>{'⚙'}</Text></Pressable>
+        {wallet.storeAvailable && <Pressable onPress={() => router.push('/store')} style={[s.gear, { top: insets.top + 8, right: 62 }]} accessibilityLabel="Shop"><Text style={s.gearT}>{'\uD83D\uDCA1'}</Text></Pressable>}
         <Text style={s.logo}><Text style={{ color: C.accent }}>RULE</Text><Text style={{ color: C.pink }}>SHIFT</Text></Text>
         <Text style={s.tag}>You solve it {'·'} You change it {'·'} You pass it on</Text>
 

@@ -9,6 +9,8 @@ import { type Challenge, passItOn } from '../social/flow';
 import { getRepository } from '../social';
 import { backendEnabled } from '../config';
 import { shareReplayGif } from './exportGif';
+import { router } from 'expo-router';
+import { money, useMoney } from '../monetization';
 import { track } from '../telemetry';
 import { C } from './theme';
 
@@ -99,13 +101,14 @@ export function SendSheet(props: { chain: Chain; message: string; remote: boolea
       {!props.remote && getRepoIsOnlineCapable() && <Text style={s.warn}>Offline right now, so this is a self-contained code. It works anywhere.</Text>}
       <View style={s.row}>
         <Pressable style={[s.btn, s.mint]} onPress={async () => {
+          money().noteSent();
           track('share_tapped', { depth: props.chain.links.length, remote: props.remote });
           void repo.event(null, props.nodeId, 'share');
           try { await Share.share({ message: props.message }); } catch { /* cancelled */ }
         }}>
           <Text style={[s.btnT, { color: C.bgTop }]}>Send to a friend</Text>
         </Pressable>
-        <Pressable style={s.btn} onPress={async () => { track('copy_tapped'); void repo.event(null, props.nodeId, 'copy'); await Clipboard.setStringAsync(props.message); flash('Copied \u2014 paste it in any chat'); }}>
+        <Pressable style={s.btn} onPress={async () => { money().noteSent(); track('copy_tapped'); void repo.event(null, props.nodeId, 'copy'); await Clipboard.setStringAsync(props.message); flash('Copied \u2014 paste it in any chat'); }}>
           <Text style={s.btnT}>Copy</Text>
         </Pressable>
       </View>
@@ -125,6 +128,32 @@ export function SendSheet(props: { chain: Chain; message: string; remote: boolea
         <Pressable style={s.btn} onPress={props.onHome}><Text style={s.btnT}>Home</Text></Pressable>
       </View>
       {!!note && <Text style={s.note}>{note}</Text>}
+    </View>
+  );
+}
+
+export function HintSheet(props: { onClose: () => void }) {
+  const m = useMoney();
+  const [note, setNote] = useState('');
+  const watch = async () => {
+    const r = await money().watchAdForHint();
+    if (r === 'granted') { track('rewarded_watched'); props.onClose(); }
+    else setNote(r === 'closed' ? 'Watch the whole video to earn the hint.' : r === 'cap' ? 'That\u2019s all the free videos for today.' : 'No video available right now. Try again in a moment.');
+  };
+  return (
+    <View style={s.sheet}>
+      <Text style={s.h2}>Out of hints {'\uD83D\uDCA1'}</Text>
+      <Text style={s.p}>You get a free hint every day. Need one now?</Text>
+      {m.rewardedAvailable && (
+        <Pressable style={[s.btn, s.mint, { marginBottom: 8 }]} disabled={m.busy} onPress={watch}>
+          <Text style={[s.btnT, { color: C.bgTop }]}>{m.busy ? 'Loading\u2026' : `Watch a short video: +1 hint (${m.rewardedLeft} left today)`}</Text>
+        </Pressable>
+      )}
+      {m.storeAvailable && (
+        <Pressable style={[s.btn, { marginBottom: 8 }]} onPress={() => { props.onClose(); router.push('/store'); }}><Text style={s.btnT}>Get more hints</Text></Pressable>
+      )}
+      {!!note && <Text style={s.warn}>{note}</Text>}
+      <Pressable style={s.btn} onPress={props.onClose}><Text style={s.btnT}>Close</Text></Pressable>
     </View>
   );
 }
