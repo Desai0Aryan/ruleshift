@@ -1,0 +1,18 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`determinism > GOLDEN: pinned digests never change (guards against engine drift between app versions/devices) 1`] = `
+{
+  "L01": 1979801063,
+  "L02": 3338440707,
+  "L03": 596755028,
+  "L04": 1552528528,
+  "L05": 219386331,
+  "L06": 3009290116,
+  "L07": 3384606928,
+  "L08": 3053419816,
+  "L09": 3847170028,
+  "L10": 2821736882,
+  "L11": 3317118691,
+  "L12": 2152888934,
+}
+`;

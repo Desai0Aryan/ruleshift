@@ -1,0 +1,43 @@
+{
+  "name": "ruleshift",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "^2.2.0",
+    "@shopify/react-native-skia": "^2.14.0",
+    "expo": "~58.0.23",
+    "expo-audio": "~58.0.11",
+    "expo-clipboard": "~58.0.4",
+    "expo-constants": "~58.0.15",
+    "expo-haptics": "~58.0.7",
+    "expo-linear-gradient": "~58.0.3",
+    "expo-linking": "~58.0.16",
+    "expo-router": "~58.0.30",
+    "expo-status-bar": "~58.0.4",
+    "react": "19.3.0",
+    "react-native": "0.88.1",
+    "react-native-safe-area-context": "~5.11.1",
+    "react-native-screens": "~4.30.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/react": "~19.3.0",
+    "esbuild": "^0.28.2",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.6",
+    "vitest": "^5.1.0"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "levels:solve": "esbuild scripts/solve-levels.ts --bundle --platform=node --format=cjs --loader:.json=json --outfile=.tmp/solve-levels.cjs --log-level=error && node .tmp/solve-levels.cjs",
+    "web:build": "node scripts/build-web.mjs",
+    "levels:metrics": "esbuild scripts/level-metrics.ts --bundle --platform=node --format=cjs --loader:.json=json --outfile=.tmp/level-metrics.cjs --log-level=error && node .tmp/level-metrics.cjs",
+    "rules:matrix": "esbuild scripts/rule-matrix.ts --bundle --platform=node --format=cjs --loader:.json=json --outfile=.tmp/rule-matrix.cjs --log-level=error && node .tmp/rule-matrix.cjs"
+  },
+  "private": true
+}

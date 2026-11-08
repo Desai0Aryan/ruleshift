@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0b0e24">
+<title>RULESHIFT (web preview)</title>
+<style>
+:root{--bg:#0b0e24;--panel:#151a3d;--edge:#2a3170;--text:#eef0ff;--dim:#9aa3e6;--accent:#6c7bff;--pink:#ff7ad9;--mint:#7affc4;--gold:#ffd54a}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;touch-action:none}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,sans-serif;overflow:hidden}
+#app{position:fixed;inset:0;display:flex;flex-direction:column;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+#stage{position:relative;flex:1;min-height:0}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.bar{display:flex;align-items:center;gap:8px;padding:10px 14px;position:absolute;top:0;left:0;right:0;z-index:3;pointer-events:none}
+.bar>*{pointer-events:auto}
+.title{flex:1;font-weight:700;letter-spacing:.02em;font-size:15px}
+.title small{display:block;font-weight:500;color:var(--dim);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.chip{font-size:11px;font-weight:700;padding:4px 8px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+button{font:inherit;color:inherit;border:0;cursor:pointer}
+.ibtn{width:38px;height:38px;border-radius:12px;background:var(--panel);border:1px solid var(--edge);font-size:17px}
+#tray{display:flex;align-items:center;gap:10px;padding:10px 14px 14px;background:linear-gradient(#0b0e2400,#0b0e24 30%)}
+#pieces{flex:1;display:flex;gap:10px;align-items:center;min-height:46px;overflow:hidden}
+.piece{height:34px;border-radius:17px;background:linear-gradient(#e7eaff,#b5bcff);box-shadow:0 0 14px #6c7bff66;position:relative;touch-action:none}
+.piece.used{opacity:.18}
+.go{min-width:104px;height:48px;border-radius:24px;background:linear-gradient(135deg,#6c7bff,#8b5cff);font-weight:800;font-size:16px;letter-spacing:.03em;box-shadow:0 6px 24px #6c7bff77}
+.go:disabled{opacity:.4;box-shadow:none}
+.go.retry{background:linear-gradient(135deg,#ff7ad9,#ff5b9d)}
+.screen{position:absolute;inset:0;z-index:10;background:radial-gradient(120% 80% at 50% 0%,#232a7a 0%,#0b0e24 60%);display:flex;flex-direction:column;align-items:center;padding:calc(env(safe-area-inset-top) + 36px) 20px 24px;overflow:auto;touch-action:pan-y}
+.hidden{display:none!important}
+.logo{font-size:44px;font-weight:900;letter-spacing:.04em;background:linear-gradient(90deg,#6c7bff,#ff7ad9 60%,#ffd54a);-webkit-background-clip:text;background-clip:text;color:transparent;margin:6px 0 2px}
+.tag{color:var(--dim);font-size:12px;letter-spacing:.18em;text-transform:uppercase;margin-bottom:22px;text-align:center}
+.cta{width:100%;max-width:340px;height:56px;border-radius:28px;background:linear-gradient(135deg,#6c7bff,#8b5cff);font-weight:800;font-size:19px;box-shadow:0 8px 30px #6c7bff77;margin-bottom:18px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:100%;max-width:340px;margin-bottom:20px}
+.lv{aspect-ratio:1;border-radius:16px;background:var(--panel);border:1px solid var(--edge);font-weight:800;font-size:18px;position:relative}
+.lv.done{border-color:var(--mint);color:var(--mint)}
+.lv.done::after{content:"\2713";position:absolute;right:7px;top:4px;font-size:11px}
+.paste{width:100%;max-width:340px;display:flex;gap:8px}
+.paste input{flex:1;min-width:0;height:44px;border-radius:12px;border:1px solid var(--edge);background:var(--panel);color:var(--text);padding:0 12px;font-size:14px;user-select:text;-webkit-user-select:text;touch-action:auto}
+.paste button{height:44px;padding:0 14px;border-radius:12px;background:var(--panel);border:1px solid var(--pink);color:var(--pink);font-weight:700}
+.sub{color:var(--dim);font-size:12px;margin:8px 0}
+.modal{position:absolute;inset:0;z-index:20;display:flex;align-items:flex-end;justify-content:center;background:#050716aa;backdrop-filter:blur(3px)}
+.sheet{width:100%;max-width:440px;background:linear-gradient(#171c48,#10143a);border:1px solid var(--edge);border-radius:26px 26px 0 0;padding:20px 18px calc(env(safe-area-inset-bottom) + 18px);animation:up .28s cubic-bezier(.2,.9,.3,1.1)}
+@keyframes up{from{transform:translateY(60px);opacity:0}}
+.sheet h2{margin:0 0 4px;font-size:22px}
+.sheet p{margin:0 0 14px;color:var(--dim);font-size:13px}
+.rule{width:100%;display:flex;align-items:center;gap:12px;text-align:left;padding:12px 14px;border-radius:16px;background:#1f2563;border:1.5px solid var(--c);margin-bottom:9px;position:relative;overflow:hidden}
+.rule:disabled{opacity:.45;border-style:dashed}
+.rule b{display:block;font-size:16px}
+.rule span{font-size:12px;color:var(--dim)}
+.rule em{margin-left:auto;font-style:normal;font-size:11px;font-weight:700;color:var(--c);white-space:nowrap}
+.rule i{width:34px;height:34px;border-radius:10px;background:var(--c);flex:none;display:grid;place-items:center;color:#0b0e24;font-style:normal;font-weight:900}
+.rule .bar2{position:absolute;left:0;bottom:0;height:3px;background:var(--c);width:var(--p,0%);transition:width .1s}
+.row{display:flex;gap:10px;margin-top:6px}
+.btn{flex:1;height:48px;border-radius:24px;background:var(--panel);border:1px solid var(--edge);font-weight:700}
+.btn.p{background:linear-gradient(135deg,#ff7ad9,#ff5b9d);border:0;color:#fff}
+.btn.m{background:linear-gradient(135deg,#7affc4,#4be0a0);border:0;color:#0b0e24}
+.code{font-family:Menlo,monospace;font-size:10px;word-break:break-all;background:#0b0e24;border:1px solid var(--edge);border-radius:10px;padding:8px;max-height:64px;overflow:auto;color:var(--dim);user-select:text;-webkit-user-select:text;touch-action:auto;margin-bottom:10px}
+.banner{position:absolute;left:0;right:0;top:64px;text-align:center;z-index:4;font-weight:800;font-size:22px;pointer-events:none;text-shadow:0 2px 14px #000}
+.toast{position:absolute;left:50%;bottom:90px;transform:translateX(-50%);background:#000c;border:1px solid var(--edge);padding:8px 14px;border-radius:99px;font-size:13px;z-index:30}
+</style></head>
+<body><div id="app">
+ <div id="stage">
+  <canvas id="cv"></canvas>
+  <div class="bar" id="bar">
+    <button class="ibtn" id="back" aria-label="Back">‹</button>
+    <div class="title" id="ttl"></div>
+    <div id="chips" style="display:flex;gap:6px"></div>
+    <button class="ibtn" id="hintBtn" aria-label="Hint">&#x1F4A1;</button>
+  </div>
+  <div class="banner hidden" id="banner"></div>
+  <div class="screen" id="home">
+    <div class="logo">RULESHIFT</div>
+    <div class="tag">You solve it · You change it · You pass it on</div>
+    <button class="cta" id="playBtn">Play</button>
+    <div class="grid" id="grid"></div>
+    <div class="paste"><input id="codeIn" placeholder="Paste a friend's challenge…" autocomplete="off" autocapitalize="off" spellcheck="false"><button id="codeGo">Go</button></div>
+    <div class="sub" id="homeMsg"></div>
+    <div class="sub" style="max-width:320px;text-align:center;margin-top:auto;padding-top:20px">Web preview of the RULESHIFT engine — same deterministic physics as the app.</div>
+  </div>
+ </div>
+ <div id="tray" class="hidden"><div id="pieces"></div><button class="go" id="goBtn">GO</button></div>
+ <div class="modal hidden" id="modal"><div class="sheet" id="sheet"></div></div>
+</div>
+<script>/*BUNDLE*/</script>
+</body></html>

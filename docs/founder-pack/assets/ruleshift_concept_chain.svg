@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 360" font-family="Helvetica, Arial, sans-serif">
+  <rect width="900" height="360" fill="#0f1226"/>
+  <text x="450" y="40" text-anchor="middle" fill="#ffffff" font-size="24" font-weight="700">RULESHIFT: the puzzle mutates as it travels</text>
+  <g stroke="#6c7bff" stroke-width="3" fill="none">
+    <path d="M250 190 H310" marker-end="url(#a)"/><path d="M470 190 H530" marker-end="url(#a)"/><path d="M690 190 H750" marker-end="url(#a)"/>
+  </g>
+  <defs><marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#6c7bff"/></marker></defs>
+
+  <g>
+    <rect x="40" y="90" width="200" height="200" rx="18" fill="#1b2050" stroke="#6c7bff"/>
+    <text x="140" y="118" text-anchor="middle" fill="#cfd3ff" font-size="14">Player 1: original</text>
+    <circle cx="90" cy="170" r="12" fill="#3da5ff"/>
+    <rect x="110" y="215" width="70" height="10" fill="#8890d9" transform="rotate(-20 145 220)"/>
+    <circle cx="190" cy="255" r="16" fill="none" stroke="#ffd54a" stroke-width="4"/>
+    <text x="140" y="280" text-anchor="middle" fill="#8890d9" font-size="12">ball to target</text>
+  </g>
+  <g>
+    <rect x="320" y="90" width="150" height="200" rx="18" fill="#1b2050" stroke="#ff7ad9"/>
+    <text x="395" y="118" text-anchor="middle" fill="#ffb3ec" font-size="14">+ Reverse gravity</text>
+    <circle cx="360" cy="260" r="12" fill="#3da5ff"/>
+    <path d="M360 235 V190" stroke="#ff7ad9" stroke-width="3" marker-end="url(#b)"/>
+    <circle cx="430" cy="150" r="16" fill="none" stroke="#ffd54a" stroke-width="4"/>
+  </g>
+  <g>
+    <rect x="540" y="90" width="150" height="200" rx="18" fill="#1b2050" stroke="#7affc4"/>
+    <text x="615" y="118" text-anchor="middle" fill="#b5ffe0" font-size="14">+ Duplicate objects</text>
+    <circle cx="575" cy="200" r="12" fill="#3da5ff"/><circle cx="605" cy="230" r="12" fill="#3da5ff"/>
+    <circle cx="660" cy="160" r="16" fill="none" stroke="#ffd54a" stroke-width="4"/>
+  </g>
+  <g>
+    <rect x="760" y="90" width="110" height="200" rx="18" fill="#1b2050" stroke="#ffd54a"/>
+    <text x="815" y="118" text-anchor="middle" fill="#ffe99a" font-size="14">+ Teleport</text>
+    <circle cx="790" cy="170" r="10" fill="#3da5ff"/><circle cx="840" cy="250" r="10" fill="#3da5ff"/>
+    <path d="M800 172 L830 246" stroke="#ffd54a" stroke-dasharray="5 5"/>
+  </g>
+  <defs><marker id="b" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#ff7ad9"/></marker></defs>
+  <text x="450" y="330" text-anchor="middle" fill="#cfd3ff" font-size="16">YOU SOLVE IT. YOU CHANGE IT. YOU PASS IT ON.</text>
+</svg>
