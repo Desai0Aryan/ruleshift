@@ -3,9 +3,13 @@ import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Linking } from 'react-native';
+import { backendEnabled } from '../config';
 import { useMoney } from '../monetization';
+import { getRepository } from '../social';
+import { SHARE_HOST } from '../social/links';
 import { clearTelemetry, exportJson, type GateSummary, summary } from '../telemetry';
-import { resetProgress, setHaptics, setSound, useAppState } from './store';
+import { resetProgress, setHaptics, setReduceMotion, setSound, useAppState } from './store';
 import { C } from './theme';
 
 const pct = (v: number | null) => (v === null ? '—' : `${Math.round(v * 100)}%`);
@@ -27,8 +31,9 @@ export function SettingsScreen() {
       </View>
 
       <View style={s.card}>
-        <View style={s.row}><Text style={s.label}>Sound</Text><Switch value={st.sound} onValueChange={setSound} /></View>
-        <View style={s.row}><Text style={s.label}>Haptics</Text><Switch value={st.haptics} onValueChange={setHaptics} /></View>
+        <View style={s.row}><Text style={s.label}>Sound</Text><Switch value={st.sound} onValueChange={setSound} accessibilityLabel="Sound" /></View>
+        <View style={s.row}><Text style={s.label}>Haptics</Text><Switch value={st.haptics} onValueChange={setHaptics} accessibilityLabel="Haptics" /></View>
+        <View style={s.row}><Text style={s.label}>Reduce motion</Text><Switch value={st.reduceMotion} onValueChange={setReduceMotion} accessibilityLabel="Reduce motion" /></View>
       </View>
 
       <Text style={s.sec}>Hints &amp; shop</Text>
@@ -50,6 +55,22 @@ export function SettingsScreen() {
           <Pressable style={s.btn} onPress={refresh}><Text style={s.btnT}>Refresh</Text></Pressable>
         </View>
         {!!note && <Text style={[s.dim, { marginTop: 8 }]}>{note}</Text>}
+      </View>
+
+      <Text style={s.sec}>Privacy &amp; support</Text>
+      <View style={s.card}>
+        <Pressable style={s.btn} onPress={() => void Linking.openURL(`${SHARE_HOST}/privacy/`)}><Text style={s.btnT}>Privacy policy</Text></Pressable>
+        <Pressable style={s.btn} onPress={() => void Linking.openURL(`${SHARE_HOST}/terms/`)}><Text style={s.btnT}>Terms of use</Text></Pressable>
+        <Pressable style={s.btn} onPress={() => void Linking.openURL(`${SHARE_HOST}/support/`)}><Text style={s.btnT}>Help &amp; contact</Text></Pressable>
+        {backendEnabled && (
+          <Pressable style={[s.btn, { borderColor: C.danger }]} onPress={async () => {
+            const ok = await getRepository().deleteOnlineData();
+            setNote(ok ? 'Your online data was deleted.' : 'Couldn\u2019t reach the server. Try again when you\u2019re online.');
+          }} accessibilityLabel="Delete my online data">
+            <Text style={[s.btnT, { color: C.danger }]}>Delete my online data</Text>
+          </Pressable>
+        )}
+        {!!note && <Text style={[s.dim, { marginTop: 4 }]}>{note}</Text>}
       </View>
 
       <Text style={s.sec}>Danger zone</Text>

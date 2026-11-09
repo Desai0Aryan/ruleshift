@@ -30,6 +30,8 @@ export interface ChainRepository {
   mine(): Promise<MyChain[]>;
   /** loads a stored chain (for replay) by history id */
   chainFor(entry: MyChain): Chain | null;
+  /** Deletes the online identity + events and clears on-device history. Returns false if the server couldn't be reached. */
+  deleteOnlineData(): Promise<boolean>;
 }
 
 /** Sends one request to the backend. Real impl = Supabase Edge Function; tests plug the handler in directly. */
@@ -94,6 +96,15 @@ export class HybridRepository implements ChainRepository {
     if (!r.ok) return { ok: false, error: r.error };
     if (!('chain' in r)) return { ok: false, error: 'Unexpected server answer.' };
     return challengeFromChain(r.chain, { nodeId: r.id, proofHidden: true });
+  }
+
+  async deleteOnlineData(): Promise<boolean> {
+    let ok = true;
+    if (this.transport) {
+      try { const r = await this.transport.call({ op: 'deleteMe' }); ok = r.ok && 'deleted' in r; } catch { ok = false; }
+    }
+    if (ok) { try { await this.kv.set(HISTORY_KEY, '[]'); } catch { /* ignore */ } }
+    return ok;
   }
 
   async hint(challenge: Challenge): Promise<Solution> {

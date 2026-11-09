@@ -13,6 +13,8 @@ import { router } from 'expo-router';
 import { money, useMoney } from '../monetization';
 import { track } from '../telemetry';
 import { C } from './theme';
+import { TWIST_INTRO } from './coach';
+import { seeTwistIntro, useAppState } from './store';
 
 const getRepoIsOnlineCapable = () => backendEnabled;
 
@@ -27,6 +29,7 @@ export function RulePickerSheet(props: {
   onChosen: (chain: Chain) => void;
 }) {
   const { challenge, solved } = props;
+  const app = useAppState();
   const [deal, setDeal] = useState(() => (Date.now() & 0xffff) + 1);
   const hand = dealHand(deal, 4);
   const [rows, setRows] = useState<Record<string, RowState>>({});
@@ -55,12 +58,14 @@ export function RulePickerSheet(props: {
     if (!v || v.status !== 'ok') return;
     const applied = v.level.rules[v.level.rules.length - 1];
     track('rule_picked', { rule: applied.id, depth: challenge.depth });
+    seeTwistIntro();
     props.onChosen(passItOn(challenge, solved, { id: applied.id, seed: applied.seed }, v.solution));
   };
 
   return (
     <View style={s.sheet}>
       <Text style={s.h2}>Solved! {'✨'} Change ONE rule</Text>
+      {app.loaded && !app.twistIntroSeen && <Text style={[s.p, { color: C.mint }]}>{TWIST_INTRO}</Text>}
       <Text style={s.p}>{challenge.source !== 'campaign' ? 'Add your twist and pass it on.' : 'Pick a twist, then send it to a friend.'} We check every twist is still solvable.</Text>
       {hand.map((id) => {
         const r = RULES[id];

@@ -31,6 +31,10 @@ export const supabaseTransport: Transport = {
     const c = getClient();
     await ensureSession(c);
     const { data, error } = await c.functions.invoke('api', { body });
+    if (body.op === 'deleteMe' && data && typeof data === 'object' && 'deleted' in data) {
+      // the auth user no longer exists: drop the local session so the next call signs in as a brand-new anonymous user
+      try { await c.auth.signOut({ scope: 'local' }); } catch { /* ignore */ }
+    }
     if (data && typeof data === 'object' && 'ok' in data) return data as ApiResponse;
     // functions.invoke surfaces non-2xx as `error` with the JSON body in error.context (a Response)
     const ctx = (error as { context?: Response } | null)?.context;

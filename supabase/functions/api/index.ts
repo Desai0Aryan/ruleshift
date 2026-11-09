@@ -21,7 +21,7 @@ const newId = () => {
 
 const toRow = (r: any) => ({
   id: r.id, parentId: r.parent_id, depth: r.depth, base: r.base, rule: r.rule, seed: Number(r.seed),
-  solved: r.solved, proof: r.proof, playerId: r.player_id, createdAt: new Date(r.created_at).getTime(), engine: r.engine,
+  solved: r.solved, proof: r.proof, playerId: r.player_id ?? '', createdAt: new Date(r.created_at).getTime(), engine: r.engine,
 });
 
 function makeStore(db: any) {
@@ -50,6 +50,11 @@ function makeStore(db: any) {
     async listNodesBy(playerId: string, limit: number) {
       const { data } = await db.from('nodes').select('*').eq('player_id', playerId).order('created_at', { ascending: false }).limit(limit);
       return (data ?? []).map(toRow);
+    },
+    async deleteUser(playerId: string) {
+      // events cascade with the user; nodes are detached (player_id -> null) by migration 0002
+      const { error } = await db.auth.admin.deleteUser(playerId);
+      if (error) throw new Error(error.message);
     },
     async isBanned(playerId: string) {
       const { data } = await db.from('banned_users').select('user_id').eq('user_id', playerId).maybeSingle();

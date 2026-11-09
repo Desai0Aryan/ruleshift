@@ -29,6 +29,8 @@ export class PlayController {
   trails: Array<Array<[number, number]>> = [];
   particles: Particle[] = [];
   shake = 0;
+  /** accessibility: no screen shake and far fewer particles */
+  reduceMotion = false;
   attempts = 0;
   elapsedEdit = 0;
   /** seconds since the phase changed (renderers use it for easing) */
@@ -170,6 +172,7 @@ export class PlayController {
   }
 
   private burst(x: number, y: number, n: number, color: string, speed: number, life = 0.6) {
+    if (this.reduceMotion) n = Math.ceil(n / 5);
     for (let k = 0; k < n; k++) {
       const a = this.rand() * Math.PI * 2;
       const v = speed * (0.35 + this.rand() * 0.65);
@@ -197,7 +200,7 @@ export class PlayController {
           this.burst(this.level.target.x, this.level.target.y, 70, '#ffd54a', 70, 1.1);
           this.burst(this.level.target.x, this.level.target.y, 40, '#7affc4', 55, 1.0);
           this.particles.push({ x: this.level.target.x, y: this.level.target.y, vx: 0, vy: 0, life: 0.7, max: 0.7, size: 6, color: '#ffd54a', kind: 'ring' });
-          this.shake = Math.max(this.shake, 0.5);
+          if (!this.reduceMotion) this.shake = Math.max(this.shake, 0.5);
           this.onEvent('win', { x: this.level.target.x, y: this.level.target.y });
         } else {
           this.setPhase('lost');
@@ -226,7 +229,7 @@ export class PlayController {
     for (const e of sim.events) {
       if (e.type === 'bounce') {
         this.burst(e.x, e.y, e.bumper ? 10 : 4, e.bumper ? '#ff7ad9' : '#c8ceff', 22 + Math.min(e.speed, 140) * 0.2, 0.35);
-        if (e.bumper) { this.shake = Math.max(this.shake, 0.25); this.onEvent('bumper', { x: e.x, y: e.y, speed: e.speed }); }
+        if (e.bumper) { if (!this.reduceMotion) this.shake = Math.max(this.shake, 0.25); this.onEvent('bumper', { x: e.x, y: e.y, speed: e.speed }); }
         else this.onEvent('bounce', { x: e.x, y: e.y, speed: e.speed });
       } else if (e.type === 'portal') {
         this.burst(e.x, e.y, 14, '#8fb4ff', 40, 0.5);

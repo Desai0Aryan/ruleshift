@@ -37,6 +37,8 @@ export interface ServerStore {
   addEvent(e: { nodeId: string; userId: string; kind: EventKind; at: number }): Promise<void>;
   listNodesBy(playerId: string, limit: number): Promise<NodeRow[]>;
   isBanned?(playerId: string): Promise<boolean>;
+  /** Erases everything tied to this player. Puzzles other people built on stay (detached from the player). */
+  deleteUser?(playerId: string): Promise<void>;
 }
 
 export type ApiRequest = Record<string, unknown>;
@@ -47,6 +49,7 @@ export type ApiResponse =
   | { ok: true; chain: Omit<Chain, 'proof'> & { proof: Solution }; id: string; depth: number; proofHidden: true }
   | { ok: true; proof: Solution }
   | { ok: true; recorded: true }
+  | { ok: true; deleted: true }
   | { ok: true; nodes: Array<{ id: string; depth: number; rule: RuleId; createdAt: number }> };
 
 export const LIMITS = { nodesPerHour: 40, maxSolutionPieces: 8 } as const;
@@ -92,7 +95,7 @@ const chainOf = (path: NodeRow[], proof: Solution): Chain => ({
 
 export async function handleRequest(store: ServerStore, userId: string, body: ApiRequest, now = Date.now()): Promise<ApiResponse> {
   if (!body || typeof body !== 'object' || typeof body.op !== 'string') return err('bad_request', 'Malformed request.');
-  if (store.isBanned && (await store.isBanned(userId))) return err('forbidden', 'This account can’t publish.');
+  if (body.op !== 'deleteMe' && store.isBanned && (await store.isBanned(userId))) return err('forbidden', 'This account can’t publish.');
 
   switch (body.op) {
     case 'createNode': {
@@ -160,6 +163,13 @@ export async function handleRequest(store: ServerStore, userId: string, body: Ap
     case 'myNodes': {
       const rows = await store.listNodesBy(userId, 50);
       return { ok: true, nodes: rows.map((r) => ({ id: r.id, depth: r.depth, rule: r.rule, createdAt: r.createdAt })) };
+    }
+
+    case 'deleteMe': {
+      // Allowed even for banned users (data deletion is a right; the ban list is handled server-side).
+      if (!store.deleteUser) return err('bad_request', 'Not supported.');
+      await store.deleteUser(userId);
+      return { ok: true, deleted: true };
     }
 
     default:

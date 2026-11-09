@@ -13,4 +13,8 @@ export class MemoryStore implements ServerStore {
   async addEvent(e: { nodeId: string; userId: string; kind: EventKind; at: number }) { this.events.push(e); }
   async listNodesBy(playerId: string, limit: number) { return [...this.nodes.values()].filter((r) => r.playerId === playerId).sort((a, b) => b.createdAt - a.createdAt).slice(0, limit); }
   async isBanned(id: string) { return this.banned.has(id); }
+  async deleteUser(id: string) {
+    for (const [k, n] of this.nodes) if (n.playerId === id) this.nodes.set(k, { ...n, playerId: '' });
+    this.events = this.events.filter((e) => e.userId !== id);
+  }
 }

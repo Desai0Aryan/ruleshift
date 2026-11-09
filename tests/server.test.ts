@@ -128,3 +128,35 @@ describe('server: events and listing', () => {
     expect(s.events.map((e) => e.kind)).toEqual(['solve', 'share']);
   });
 });
+
+describe('account deletion', () => {
+  it('erases the player but keeps other players’ branches', async () => {
+    const store = new MemoryStore();
+    const g = await import('../src/game/levels');
+    const { startChain } = await import('../src/social/chain');
+    const { verifyRuleSync } = await import('../src/rules/verify');
+    const base = g.BASE_LEVELS[0];
+    const v = verifyRuleSync(base, 'duplicate', { baseSeed: 1, budget: 3000 });
+    if (v.status !== 'ok') throw new Error('setup');
+    const chain = startChain(base.id, 'duplicate', v.level.rules[0].seed, g.pinnedSolution(base.id)!, v.solution);
+    const a = await handleRequest(store, 'alice', createNodeBody(chain, null));
+    expect(a.ok).toBe(true);
+    const id = (a as { id: string }).id;
+    await handleRequest(store, 'bob', { op: 'recordEvent', id, kind: 'solve' });
+    await handleRequest(store, 'alice', { op: 'recordEvent', id, kind: 'share' });
+    const del = await handleRequest(store, 'alice', { op: 'deleteMe' });
+    expect(del).toEqual({ ok: true, deleted: true });
+    expect(store.nodes.get(id)!.playerId).toBe('');          // puzzle stays, detached
+    expect(store.events.some((e) => e.userId === 'alice')).toBe(false);
+    expect(store.events.some((e) => e.userId === 'bob')).toBe(true);
+    const mine = await handleRequest(store, 'alice', { op: 'myNodes' });
+    expect(mine).toMatchObject({ ok: true, nodes: [] });
+    const got = await handleRequest(store, 'carol', { op: 'getNode', id });
+    expect(got.ok).toBe(true);                                // others can still open it
+  });
+  it('banned users can still delete their data', async () => {
+    const store = new MemoryStore(); store.banned.add('mallory');
+    expect(await handleRequest(store, 'mallory', { op: 'deleteMe' })).toEqual({ ok: true, deleted: true });
+    expect((await handleRequest(store, 'mallory', { op: 'myNodes' })).ok).toBe(false);
+  });
+});

@@ -433,6 +433,13 @@ function simDigest(sim) {
 }
 
 // src/rules/index.ts
+var RUBBER_E = 0.85;
+var WIND_STEP = 30;
+var WIND_MAX = 60;
+var BIG_R = 4.5;
+var SMALL_R = 2;
+var MOON_MIN = 35;
+var MAX_DISCS = 8;
 function stamp(l, id, seed) {
   l.rules.push({ id, seed });
   return l;
@@ -534,6 +541,117 @@ var RULES = {
       if (!b) return null;
       l.portals = { a: { x: round1(a.x), y: round1(a.y), r: pr }, b: { x: round1(b.x), y: round1(b.y), r: pr } };
       return stamp(l, "teleport", seed);
+    }
+  },
+  rubber: {
+    id: "rubber",
+    name: "Rubber walls",
+    blurb: "Every wall becomes bouncy. Ricochets everywhere.",
+    icon: "rubber",
+    color: "#ff9f5a",
+    seeded: false,
+    apply(level, seed) {
+      if (level.segments.length === 0 || level.segments.every((s) => s.e >= RUBBER_E)) return null;
+      const l = cloneLevel(level);
+      for (const s of l.segments) s.e = RUBBER_E;
+      return stamp(l, "rubber", seed);
+    }
+  },
+  wind: {
+    id: "wind",
+    name: "Crosswind",
+    blurb: "A steady wind pushes everything sideways.",
+    icon: "wind",
+    color: "#9be7ff",
+    seeded: true,
+    apply(level, seed) {
+      const dir = new Rng(seed ^ 625341585).chance(0.5) ? 1 : -1;
+      const gx = level.gravity.x + dir * WIND_STEP;
+      if (Math.abs(gx) > WIND_MAX) return null;
+      const l = cloneLevel(level);
+      l.gravity = { x: gx, y: l.gravity.y };
+      return stamp(l, "wind", seed);
+    }
+  },
+  mirror: {
+    id: "mirror",
+    name: "Mirror",
+    blurb: "The whole puzzle flips left to right.",
+    icon: "mirror",
+    color: "#c9a3ff",
+    seeded: false,
+    apply(level, seed) {
+      const l = cloneLevel(level);
+      const mx = (x) => l.w - x;
+      l.balls = l.balls.map((b) => ({ ...b, x: mx(b.x) }));
+      l.target = { ...l.target, x: mx(l.target.x) };
+      l.segments = l.segments.map((s) => ({ ...s, ax: mx(s.ax), bx: mx(s.bx) }));
+      l.discs = l.discs.map((d) => ({ ...d, x: mx(d.x) }));
+      if (l.portals) l.portals = { a: { ...l.portals.a, x: mx(l.portals.a.x) }, b: { ...l.portals.b, x: mx(l.portals.b.x) } };
+      l.zone = { ...l.zone, x: l.w - (l.zone.x + l.zone.w) };
+      l.gravity = { x: 0 - l.gravity.x, y: l.gravity.y };
+      return stamp(l, "mirror", seed);
+    }
+  },
+  resize: {
+    id: "resize",
+    name: "Big or tiny",
+    blurb: "The ball grows or shrinks. Same course, new feel.",
+    icon: "size",
+    color: "#ff6b8b",
+    seeded: true,
+    apply(level, seed) {
+      const big = new Rng(seed ^ 2135587861).chance(0.5);
+      const l = cloneLevel(level);
+      let changed = false;
+      for (const b of l.balls) {
+        const r = big ? Math.min(BIG_R, b.r + 1.5) : Math.max(SMALL_R, b.r - 1);
+        if (r !== b.r) {
+          b.r = r;
+          changed = true;
+        }
+      }
+      return changed ? stamp(l, "resize", seed) : null;
+    }
+  },
+  moon: {
+    id: "moon",
+    name: "Low gravity",
+    blurb: "Floaty. Everything falls at half speed.",
+    icon: "moon",
+    color: "#e6e6a8",
+    seeded: false,
+    apply(level, seed) {
+      if (Math.abs(level.gravity.y) <= MOON_MIN) return null;
+      const l = cloneLevel(level);
+      l.gravity = { x: l.gravity.x, y: l.gravity.y * 0.5 };
+      return stamp(l, "moon", seed);
+    }
+  },
+  bumper: {
+    id: "bumper",
+    name: "Add a bumper",
+    blurb: "A springy bumper appears right in the ball\u2019s way.",
+    icon: "bumper",
+    color: "#ffb3ec",
+    seeded: true,
+    apply(level, seed) {
+      if (level.discs.length >= MAX_DISCS) return null;
+      const l = cloneLevel(level);
+      const rng = new Rng(seed ^ 461845907);
+      const natural = runSolution(l, [], { trace: true }).trace ?? [];
+      const usable = natural.slice(3, Math.max(4, Math.floor(natural.length * 0.85)));
+      const br = 4.5;
+      for (let k = 0; k < 60; k++) {
+        const base = usable.length > 0 ? rng.pick(usable) : [l.balls[0].x, l.balls[0].y + 24];
+        const x = round1(base[0] + rng.range(-10, 10));
+        const y = round1(base[1] + rng.range(-2, 14));
+        if (freeAt(l, x, y, br + 1, true) && Math.hypot(x - l.target.x, y - l.target.y) > br + l.target.r + 8) {
+          l.discs.push({ x, y, r: br, e: BUMPER_BOUNCE });
+          return stamp(l, "bumper", seed);
+        }
+      }
+      return null;
     }
   }
 };
@@ -646,6 +764,116 @@ var LEVEL_DEFS = [
     segments: [wall(0, 44, 66, 54), wall(90, 78, 24, 90), wall(0, 112, 66, 122)],
     discs: [bumper(76, 134, 4)],
     planks: [22, 22, 22]
+  },
+  // ---- Part 3: second pack (harder, more varied) ----
+  {
+    id: "L13",
+    name: "Slalom",
+    ball: [14, 16],
+    target: [26, 146],
+    segments: [wall(0, 50, 60, 58), wall(90, 84, 30, 92), wall(0, 118, 60, 126)],
+    discs: [bumper(72, 70, 4), bumper(18, 104, 4)],
+    planks: [24, 22]
+  },
+  {
+    id: "L14",
+    name: "Pachinko",
+    ball: [45, 14],
+    target: [45, 146],
+    discs: [bumper(30, 50, 5), bumper(60, 50, 5), bumper(18, 80, 5), bumper(45, 80, 5), bumper(72, 80, 5), bumper(30, 110, 5), bumper(60, 110, 5)],
+    segments: [wall(10, 130, 38, 150), wall(80, 130, 52, 150)],
+    planks: [22, 22]
+  },
+  {
+    id: "L15",
+    name: "Over the Wall",
+    ball: [16, 20],
+    target: [74, 140],
+    segments: [wall(50, 70, 50, 150), wall(50, 70, 36, 70)],
+    planks: [30, 24]
+  },
+  {
+    id: "L16",
+    name: "Tight Squeeze",
+    ball: [70, 16],
+    target: [20, 142],
+    targetR: 6,
+    segments: [wall(0, 70, 56, 82), wall(76, 70, 90, 70), wall(24, 110, 90, 110), wall(24, 110, 24, 130)],
+    planks: [26, 22]
+  },
+  {
+    id: "L17",
+    name: "Two Cups",
+    ball: [45, 14],
+    target: [74, 138],
+    segments: [...cup(18, 100, 24, 30), ...cup(74, 112, 24, 24)],
+    discs: [bumper(45, 70, 5)],
+    planks: [30, 24]
+  },
+  {
+    id: "L18",
+    name: "Spiral Stair",
+    ball: [14, 14],
+    target: [12, 148],
+    segments: [wall(0, 40, 66, 54), wall(90, 76, 24, 92), wall(0, 110, 66, 124), wall(90, 136, 36, 148)],
+    planks: [24, 22, 22],
+    maxTime: 17
+  },
+  {
+    id: "L19",
+    name: "Bank Shot",
+    ball: [76, 14],
+    target: [14, 120],
+    targetR: 6,
+    segments: [wall(40, 60, 40, 100), wall(40, 100, 0, 100)],
+    discs: [bumper(60, 90, 6, 1.2)],
+    planks: [28, 24],
+    maxTime: 12
+  },
+  {
+    id: "L20",
+    name: "Narrow Gate",
+    ball: [20, 16],
+    target: [70, 142],
+    segments: [wall(0, 80, 38, 80), wall(54, 80, 90, 80), wall(38, 80, 38, 94), wall(54, 80, 54, 94)],
+    discs: [bumper(16, 56, 5), bumper(74, 110, 5)],
+    planks: [24, 22, 20]
+  },
+  {
+    id: "L21",
+    name: "Stepping Stones",
+    ball: [12, 16],
+    target: [78, 146],
+    segments: [wall(4, 52, 30, 56), wall(40, 74, 62, 78), wall(58, 100, 86, 104), wall(0, 126, 40, 132)],
+    planks: [24, 24]
+  },
+  {
+    id: "L22",
+    name: "The Funnel Maze",
+    ball: [45, 12],
+    target: [45, 148],
+    targetR: 6,
+    segments: [wall(0, 44, 36, 66), wall(90, 44, 54, 66), wall(0, 90, 36, 112), wall(90, 90, 54, 112), wall(32, 126, 58, 126)],
+    planks: [26, 22, 20]
+  },
+  {
+    id: "L23",
+    name: "Under the Roof",
+    ball: [76, 14],
+    target: [76, 146],
+    targetR: 6,
+    segments: [wall(30, 60, 90, 60), wall(0, 96, 56, 110)],
+    planks: [28, 24]
+  },
+  {
+    id: "L24",
+    name: "Grand Finale",
+    ball: [14, 14],
+    target: [76, 148],
+    targetR: 6,
+    segments: [wall(0, 46, 62, 54), wall(90, 76, 28, 86), wall(0, 108, 62, 116), wall(54, 130, 54, 150)],
+    discs: [bumper(76, 62, 4), bumper(16, 92, 4), bumper(70, 124, 4)],
+    planks: [22, 22, 20]
   }
 ];
 
@@ -719,7 +947,7 @@ var chainOf = (path, proof) => ({
 });
 async function handleRequest(store, userId, body, now = Date.now()) {
   if (!body || typeof body !== "object" || typeof body.op !== "string") return err("bad_request", "Malformed request.");
-  if (store.isBanned && await store.isBanned(userId)) return err("forbidden", "This account can\u2019t publish.");
+  if (body.op !== "deleteMe" && store.isBanned && await store.isBanned(userId)) return err("forbidden", "This account can\u2019t publish.");
   switch (body.op) {
     case "createNode": {
       const { parentId, base, rule, seed, engine } = body;
@@ -787,6 +1015,11 @@ async function handleRequest(store, userId, body, now = Date.now()) {
     case "myNodes": {
       const rows = await store.listNodesBy(userId, 50);
       return { ok: true, nodes: rows.map((r) => ({ id: r.id, depth: r.depth, rule: r.rule, createdAt: r.createdAt })) };
+    }
+    case "deleteMe": {
+      if (!store.deleteUser) return err("bad_request", "Not supported.");
+      await store.deleteUser(userId);
+      return { ok: true, deleted: true };
     }
     default:
       return err("bad_request", "Unknown operation.");
