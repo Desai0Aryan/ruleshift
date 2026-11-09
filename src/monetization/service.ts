@@ -9,6 +9,10 @@ export interface MonetizationSnapshot {
   ready: boolean;
   hints: number;
   adsRemoved: boolean;
+  /** Creator Pass owned (directly or through the Supporter pack) */
+  creatorUnlocked: boolean;
+  /** a real store is configured in this build (otherwise nothing is gated) */
+  storeConfigured: boolean;
   /** a rewarded ad can be offered for a hint right now */
   rewardedAvailable: boolean;
   rewardedLeft: number;
@@ -62,6 +66,8 @@ export class Monetization {
       ready: this.ready,
       hints: this.wallet.balance,
       adsRemoved: this.adsRemoved(),
+      creatorUnlocked: this.creatorUnlocked(),
+      storeConfigured: !!d.purchases,
       rewardedAvailable: this.adsLive && !!d.ads?.rewardedReady() && rewardedLeft(this.wallet, d.day()) > 0,
       rewardedLeft: rewardedLeft(this.wallet, d.day()),
       storeAvailable: this.products.length > 0,
@@ -71,6 +77,7 @@ export class Monetization {
     };
   }
   private adsRemoved() { return [...this.owned].some((s) => SKUS[s].removesAds); }
+  private creatorUnlocked() { return [...this.owned].some((s) => SKUS[s].unlocksCreator); }
   private publish() { this.snap = this.build(); this.listeners.forEach((l) => l()); }
   private async save() {
     const p: Persisted = { v: 1, wallet: this.wallet, pacing: this.pacing, owned: [...this.owned] };

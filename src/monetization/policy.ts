@@ -71,11 +71,12 @@ export function onInterstitialShown(p: AdPacing, now: number, day: number): AdPa
 }
 
 // ---- products ----
-export type Sku = 'remove_ads' | 'hints_25' | 'supporter';
-export const SKUS: Record<Sku, { storeId: string; kind: 'non_consumable' | 'consumable'; hints: number; removesAds: boolean; title: string; blurb: string }> = {
-  remove_ads: { storeId: 'ruleshift_remove_ads', kind: 'non_consumable', hints: 0, removesAds: true, title: 'Remove ads', blurb: 'No more breaks between puzzles. Rewarded hints stay optional.' },
-  hints_25: { storeId: 'ruleshift_hints_25', kind: 'consumable', hints: 25, removesAds: false, title: '25 hints', blurb: 'Never get stuck.' },
-  supporter: { storeId: 'ruleshift_supporter', kind: 'non_consumable', hints: 60, removesAds: true, title: 'Supporter pack', blurb: 'No ads + 60 hints. Thank you!' },
+export type Sku = 'remove_ads' | 'hints_25' | 'supporter' | 'creator';
+export const SKUS: Record<Sku, { storeId: string; kind: 'non_consumable' | 'consumable'; hints: number; removesAds: boolean; unlocksCreator: boolean; title: string; blurb: string }> = {
+  remove_ads: { storeId: 'ruleshift_remove_ads', kind: 'non_consumable', hints: 0, removesAds: true, unlocksCreator: false, title: 'Remove ads', blurb: 'No more breaks between puzzles. Rewarded hints stay optional.' },
+  hints_25: { storeId: 'ruleshift_hints_25', kind: 'consumable', hints: 25, removesAds: false, unlocksCreator: false, title: '25 hints', blurb: 'Never get stuck.' },
+  supporter: { storeId: 'ruleshift_supporter', kind: 'non_consumable', hints: 60, removesAds: true, unlocksCreator: true, title: 'Supporter pack', blurb: 'Everything: no ads, Creator Pass and 60 hints. Thank you!' },
+  creator: { storeId: 'ruleshift_creator', kind: 'non_consumable', hints: 0, removesAds: false, unlocksCreator: true, title: 'Creator Pass', blurb: 'Build your own puzzles and send them to friends. Playing friends\u2019 creations is always free.' },
 };
-export const SKU_ORDER: Sku[] = ['remove_ads', 'hints_25', 'supporter'];
+export const SKU_ORDER: Sku[] = ['creator', 'remove_ads', 'hints_25', 'supporter'];
 export const skuFromStoreId = (id: string): Sku | null => SKU_ORDER.find((k) => SKUS[k].storeId === id) ?? null;

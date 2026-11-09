@@ -61,6 +61,14 @@ export function HomeScreen() {
             : <Text style={s.seedGo}>{'\u203A'}</Text>}
         </Pressable>
 
+        <Pressable style={[s.daily, { borderColor: C.mint, marginBottom: 14 }]} onPress={() => { track('editor_opened_home'); router.push('/editor'); }} accessibilityLabel="Create your own puzzle">
+          <View style={{ flex: 1 }}>
+            <Text style={s.dailyH}>Create a puzzle</Text>
+            <Text style={s.dailyD}>Build your own, solve it, twist it, send it</Text>
+          </View>
+          <Text style={s.seedGo}>{'\u203A'}</Text>
+        </Pressable>
+
         <View style={s.grid}>
           {BASE_LEVELS.map((l, i) => {
             const done = solved.includes(l.id);

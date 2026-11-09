@@ -2,6 +2,7 @@ import { ENGINE_VERSION } from '../game/constants';
 import { isRuleId } from '../rules';
 import { type Chain, checkChain, MAX_CHAIN_DEPTH } from '../social/chain';
 import type { RuleId, Solution } from '../game/types';
+import { type CustomDef, validateCustom } from '../game/custom';
 
 /**
  * Backend brain. Pure TypeScript with an injected store, so the exact same code runs
@@ -16,6 +17,8 @@ export interface NodeRow {
   /** number of links in the path ending at this node (root = 1) */
   depth: number;
   base: string;
+  /** player-made puzzle definition (root nodes of custom chains only) */
+  custom?: CustomDef | null;
   rule: RuleId;
   seed: number;
   /** player's solution to the puzzle BEFORE this node's twist */
@@ -89,6 +92,7 @@ const chainOf = (path: NodeRow[], proof: Solution): Chain => ({
   v: 1,
   engine: ENGINE_VERSION,
   base: path[0].base,
+  ...(path[0].custom ? { custom: path[0].custom } : {}),
   links: path.map((n) => ({ rule: n.rule, seed: n.seed, solved: n.solved })),
   proof,
 });
@@ -117,12 +121,21 @@ export async function handleRequest(store: ServerStore, userId: string, body: Ap
         prefix = p;
         if (prefix[0].base !== base) return err('bad_request', 'Base level mismatch.');
       }
+      // Player-made puzzles: only a ROOT node may carry the definition; it is validated before anything else.
+      let custom: CustomDef | undefined = prefix[0]?.custom ?? undefined;
+      if (body.custom !== undefined) {
+        if (parentId) return err('bad_request', 'Only the first node carries a custom puzzle.');
+        const e = validateCustom(body.custom);
+        if (e) return err('invalid_puzzle', e);
+        custom = body.custom as CustomDef;
+      }
       if (prefix.length + 1 > MAX_CHAIN_DEPTH) return err('too_deep', 'This chain is as long as it can get!');
 
       const candidate: Chain = {
         v: 1,
         engine: ENGINE_VERSION,
         base,
+        ...(custom ? { custom } : {}),
         links: [...prefix.map((n) => ({ rule: n.rule, seed: n.seed, solved: n.solved })), { rule, seed: seed >>> 0, solved }],
         proof,
       };
@@ -130,7 +143,7 @@ export async function handleRequest(store: ServerStore, userId: string, body: Ap
       if (!verdict.ok) return err('invalid_puzzle', verdict.error);
 
       const row: NodeRow = {
-        id: store.newId(), parentId: parentId ?? null, depth: prefix.length + 1, base, rule, seed: seed >>> 0,
+        id: store.newId(), parentId: parentId ?? null, depth: prefix.length + 1, base, custom: parentId ? null : custom ?? null, rule, seed: seed >>> 0,
         solved, proof, playerId: userId, createdAt: now, engine: ENGINE_VERSION,
       };
       await store.insertNode(row);

@@ -34,3 +34,8 @@ All names in `src/telemetry/index.ts`. New in Part 4: `rewarded_offered`, `rewar
 ## Honest limits
 - Ownership of non-consumables is re-read from the store at startup, but the **app trusts the device** for hint balances (no server receipts). Fine for a casual game; add RevenueCat webhooks + Supabase if hint fraud ever matters.
 - The real SDK adapters (`adapters/admob.ts`, `adapters/revenuecat.ts`) compile and bundle but have **never run against live ads/StoreKit** (no accounts yet). Expect a small first-run debug pass.
+
+## Creator Pass (Part 6)
+- Create a **non-consumable** in-app purchase in App Store Connect with product id `ruleshift_creator`, name "Creator Pass", price tier closest to $3 (Tier 3 = $2.99).
+- In RevenueCat add the product, attach it to the same entitlement setup as the others. The Supporter pack also unlocks Creator.
+- Gate is client-side: playing, testing and extending a friend's puzzle are free; sending your own creation needs the pass. There is no server-side purchase check yet (would need a RevenueCat webhook + a flag on the player row).

@@ -24,7 +24,7 @@ import { C } from './theme';
 import { fitView, toWorld, type View as WView } from './view';
 
 type Drag = { i: number; mode: 'move' | 'rotate'; dx: number; dy: number };
-type Sheet = null | { kind: 'rules'; solved: Solution } | { kind: 'hints' } | { kind: 'publishing' } | { kind: 'failed'; message: string } | { kind: 'send'; chain: Chain; message: string; remote: boolean; nodeId?: string };
+type Sheet = null | { kind: 'rules'; solved: Solution } | { kind: 'hints' } | { kind: 'publishing' } | { kind: 'paywall'; chain: Chain } | { kind: 'failed'; message: string } | { kind: 'send'; chain: Chain; message: string; remote: boolean; nodeId?: string };
 
 export function PlayScreen({ challenge }: { challenge: Challenge }) {
   const insets = useSafeAreaInsets();
@@ -178,15 +178,36 @@ export function PlayScreen({ challenge }: { challenge: Challenge }) {
   };
   /** Leaving a SOLVED puzzle is the only place an interstitial may appear (never mid-puzzle). */
   const leave = async (fn: () => void) => {
-    if (sheet) { try { if (await money().maybeShowInterstitial()) track('interstitial_shown'); } catch { /* never block */ } }
+    if (sheet && challenge.source !== 'custom') { try { if (await money().maybeShowInterstitial()) track('interstitial_shown'); } catch { /* never block */ } }
     fn();
   };
-  const home = () => void leave(() => router.replace('/'));
+  const home = () => void leave(() => (challenge.source === 'custom' ? router.back() : router.replace('/')));
+  const createdByMe = challenge.source === 'custom';
+  const gated = (): boolean => { const m = money().getSnapshot(); return createdByMe && m.storeConfigured && !m.creatorUnlocked; };
+  const doPublish = async (chain: Chain) => {
+    setSheet({ kind: 'publishing' });
+    try {
+      const r = await getRepository().publish(chain, challenge.nodeId ?? null);
+      if (createdByMe) track('creator_published');
+      setSheet({ kind: 'send', chain, message: r.message, remote: r.remote, nodeId: r.remote ? r.id : undefined });
+    } catch (e) {
+      track('publish_failed');
+      setSheet({ kind: 'failed', message: e instanceof Error ? e.message : 'Couldn\u2019t send that.' });
+    }
+  };
+  const unlockAndSend = async (chain: Chain) => {
+    track('purchase_started', { sku: 'creator' });
+    const r = await money().buy('creator');
+    if (r.ok) { track('purchase_done', { sku: 'creator' }); await doPublish(chain); }
+    else if (!r.cancelled) { track('purchase_failed', { sku: 'creator' }); setToast(r.error ?? 'Purchase failed. You were not charged.'); setTimeout(() => setToast(''), 2400); }
+  };
   const goNext = () => void leave(() => router.replace({ pathname: '/play', params: { level: BASE_LEVELS[nextIdx].id } }));
 
   const idx = BASE_LEVELS.findIndex((l) => l.id === challenge.level.base);
   const sub = challenge.source === 'daily'
     ? `Daily puzzle \u00b7 ${challenge.chain!.links.length} twist${challenge.chain!.links.length === 1 ? '' : 's'}`
+    : challenge.source === 'custom'
+    ? 'Your puzzle \u00b7 solve it to prove it works'
     : challenge.source === 'friend'
     ? `Friend's puzzle · ${challenge.chain!.links.length} change${challenge.chain!.links.length === 1 ? '' : 's'}`
     : `Level ${idx + 1}`;
@@ -251,18 +272,21 @@ export function PlayScreen({ challenge }: { challenge: Challenge }) {
               onNext={challenge.source === 'campaign' && nextIdx < BASE_LEVELS.length ? goNext : undefined}
               onHome={home}
               onChosen={async (chain) => {
-                setSheet({ kind: 'publishing' });
-                try {
-                  const r = await getRepository().publish(chain, challenge.nodeId ?? null);
-                  setSheet({ kind: 'send', chain, message: r.message, remote: r.remote, nodeId: r.remote ? r.id : undefined });
-                } catch (e) {
-                  track('publish_failed');
-                  setSheet({ kind: 'failed', message: e instanceof Error ? e.message : 'Couldn\u2019t send that.' });
-                }
+                if (gated()) { track('creator_paywall_shown'); setSheet({ kind: 'paywall', chain }); return; }
+                await doPublish(chain);
               }}
             />
           ) : sheet.kind === 'hints' ? (
             <HintSheet onClose={() => setSheet(null)} />
+          ) : sheet.kind === 'paywall' ? (
+            <View style={s.status}>
+              <Text style={s.statusT}>Your puzzle works! {'\u{1F389}'}</Text>
+              <Text style={[s.statusT, { fontWeight: '500', fontSize: 14 }]}>Sending your own creations needs the Creator Pass. Playing and testing stay free, and so does playing anything a friend sends you.</Text>
+              <Pressable style={s.statusBtn} disabled={wallet.busy} onPress={() => void unlockAndSend(sheet.chain)} accessibilityLabel="Unlock the Creator Pass and send">
+                <Text style={s.statusBtnT}>Unlock Creator Pass {wallet.products.find((p) => p.sku === 'creator')?.price ?? ''}</Text>
+              </Pressable>
+              <Pressable onPress={() => setSheet({ kind: 'rules', solved: ctl.solution.map((p) => ({ ...p })) })}><Text style={s.statusT}>Not now</Text></Pressable>
+            </View>
           ) : sheet.kind === 'publishing' ? (
             <View style={s.status}><Text style={s.statusT}>Checking and sending{'\u2026'}</Text></View>
           ) : sheet.kind === 'failed' ? (

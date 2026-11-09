@@ -79,8 +79,9 @@ function buildStatic(l: Level, v: View): SkPicture {
   return rec.finishRecordingAsPicture();
 }
 
-export function renderScene(ctl: PlayController, v: View, time: number, selected: number | null, showZone: boolean): SkPicture {
+export function renderScene(ctl: PlayController, v: View, time: number, selected: number | null, showZone: boolean, previewWall?: [number, number, number, number] | null): SkPicture {
   const L = ctl.level;
+  if (staticCache.size > 30) staticCache.clear(); // editor creates a new level id on every edit
   const key = `${levelKey(L)}|${v.w}x${v.h}@${v.scale.toFixed(3)}`;
   let cached = staticCache.get(L.id);
   if (!cached || cached.key !== key) {
@@ -101,6 +102,13 @@ export function renderScene(ctl: PlayController, v: View, time: number, selected
     paint.setPathEffect(Skia.PathEffect.MakeDash([2.5, 2.5], 0));
     c.drawRRect(Skia.RRectXY(Skia.XYWHRect(z.x, z.y, z.w, z.h), 3, 3), paint);
     paint.setPathEffect(null);
+  }
+
+  // editor: wall being drawn (half units)
+  if (previewWall) {
+    paint.setStyle(PaintStyle.Stroke); paint.setStrokeCap(StrokeCap.Round); paint.setStrokeWidth(2.4);
+    paint.setColor(col(C.mint)); paint.setAlphaf(0.8);
+    c.drawLine(previewWall[0] / 2, previewWall[1] / 2, previewWall[2] / 2, previewWall[3] / 2, paint);
   }
 
   // target

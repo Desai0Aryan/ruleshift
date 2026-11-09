@@ -27,3 +27,6 @@ select max(depth), avg(depth) from nodes;                        -- how deep cha
 2. Edit `site/.well-known/apple-app-site-association`: replace `TEAMID.com.example.ruleshift` with your Apple Team ID + bundle id.
 3. Set `SHARE_HOST` in `src/social/links.ts`, and `associatedDomains` in `app.json` (`applinks:yourdomain.com`).
 4. Put the App Store URL in `site/c/index.html` once it exists.
+
+## Migration 0003 (Part 6)
+Run `supabase/migrations/0003_custom_levels.sql` (adds `nodes.custom jsonb`, root nodes only), then redeploy the `api` function (engine bundle was rebuilt).

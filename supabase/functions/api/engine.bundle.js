@@ -91,6 +91,14 @@ var Rng = class {
     return arr[this.int(arr.length)];
   }
 };
+function fnv1a(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
 
 // src/game/angles.ts
 var ANGLE_TABLE = [
@@ -663,6 +671,110 @@ function applyRule(level, id, seed) {
   return RULES[id].apply(level, seed);
 }
 
+// src/game/custom.ts
+var CUSTOM_LIMITS = {
+  maxWalls: 14,
+  maxBumpers: 8,
+  minPlanks: 1,
+  maxPlanks: 4,
+  plankLengths: [16, 20, 24, 28, 32],
+  targetRadii: [10, 13, 16],
+  // half units => 5, 6.5, 8
+  bumperRadii: [6, 8, 10, 12, 14, 16],
+  // 3..8
+  minWallLen: 4,
+  // half units
+  maxJson: 2500
+};
+var W2 = WORLD_W * 2;
+var H2 = WORLD_H * 2;
+var isInt = (v) => typeof v === "number" && Number.isInteger(v) && Math.abs(v) < 1e5;
+var isPair = (a, n) => Array.isArray(a) && a.length === n && a.every(isInt);
+function distSeg(px, py, ax, ay, bx, by) {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const l2 = dx * dx + dy * dy;
+  let t = l2 > 0 ? ((px - ax) * dx + (py - ay) * dy) / l2 : 0;
+  t = t < 0 ? 0 : t > 1 ? 1 : t;
+  return Math.hypot(px - (ax + dx * t), py - (ay + dy * t));
+}
+function validateCustom(def) {
+  if (!def || typeof def !== "object") return "Not a puzzle.";
+  const d = def;
+  if (d.v !== 1) return "Unknown puzzle version.";
+  if (!isPair(d.b, 2)) return "Bad ball.";
+  if (!isPair(d.t, 3)) return "Bad goal.";
+  if (!Array.isArray(d.w) || !d.w.every((s) => isPair(s, 4))) return "Bad walls.";
+  if (!Array.isArray(d.d) || !d.d.every((s) => isPair(s, 3))) return "Bad bumpers.";
+  if (!Array.isArray(d.p) || !d.p.every(isInt)) return "Bad planks.";
+  if (JSON.stringify(d).length > CUSTOM_LIMITS.maxJson) return "Puzzle is too complex.";
+  const [bx, by] = d.b;
+  const [tx, ty, tr] = d.t;
+  const walls = d.w;
+  const bumpers = d.d;
+  if (walls.length > CUSTOM_LIMITS.maxWalls) return `At most ${CUSTOM_LIMITS.maxWalls} walls.`;
+  if (bumpers.length > CUSTOM_LIMITS.maxBumpers) return `At most ${CUSTOM_LIMITS.maxBumpers} bumpers.`;
+  if (d.p.length < CUSTOM_LIMITS.minPlanks || d.p.length > CUSTOM_LIMITS.maxPlanks) return `Give the player 1 to ${CUSTOM_LIMITS.maxPlanks} planks.`;
+  if (!d.p.every((l) => CUSTOM_LIMITS.plankLengths.includes(l))) return "Bad plank length.";
+  if (!CUSTOM_LIMITS.targetRadii.includes(tr)) return "Bad goal size.";
+  const inW = (x, m = 0) => x >= m && x <= W2 - m;
+  const inH = (y, m = 0) => y >= m && y <= H2 - m;
+  if (!inW(bx, 16) || !inH(by, 16)) return "Ball is out of bounds.";
+  if (!inW(tx, 16) || !inH(ty, 16)) return "Goal is out of bounds.";
+  for (const [ax, ay, cx, cy] of walls) {
+    if (!inW(ax) || !inW(cx) || !inH(ay) || !inH(cy)) return "A wall is out of bounds.";
+    if (Math.hypot(cx - ax, cy - ay) < CUSTOM_LIMITS.minWallLen) return "A wall is too short.";
+  }
+  for (const [x, y, r] of bumpers) {
+    if (!inW(x, r) || !inH(y, r)) return "A bumper is out of bounds.";
+    if (!CUSTOM_LIMITS.bumperRadii.includes(r)) return "Bad bumper size.";
+  }
+  const clear = (BALL_R + 1.5) * 2;
+  for (const [ax, ay, cx, cy] of walls) {
+    if (distSeg(bx, by, ax, ay, cx, cy) < clear + WALL_HALF_T * 2) return "The ball starts inside or too close to a wall.";
+  }
+  for (const [x, y, r] of bumpers) {
+    if (Math.hypot(bx - x, by - y) < r + clear) return "The ball starts too close to a bumper.";
+  }
+  if (Math.hypot(bx - tx, by - ty) < tr + clear + 8) return "The goal is too close to the ball.";
+  return null;
+}
+var customId = (def) => `c${fnv1a(JSON.stringify([def.b, def.t, def.w, def.d, def.p])).toString(36)}`;
+function buildCustomLevel(def) {
+  const id = customId(def);
+  const h = (n) => n / 2;
+  return {
+    id,
+    name: "Your puzzle",
+    base: id,
+    w: WORLD_W,
+    h: WORLD_H,
+    balls: [{ x: h(def.b[0]), y: h(def.b[1]), r: BALL_R }],
+    target: { x: h(def.t[0]), y: h(def.t[1]), r: h(def.t[2]) },
+    segments: def.w.map(([ax, ay, bx, by]) => ({ ax: h(ax), ay: h(ay), bx: h(bx), by: h(by), r: WALL_HALF_T, e: WALL_BOUNCE })),
+    discs: def.d.map(([x, y, r]) => ({ x: h(x), y: h(y), r: h(r), e: BUMPER_BOUNCE })),
+    inventory: def.p.map((len) => ({ kind: "plank", len })),
+    zone: { x: 8, y: 22, w: WORLD_W - 16, h: WORLD_H - 40 },
+    gravity: { x: 0, y: GRAVITY },
+    timeScale: 1,
+    portals: null,
+    maxTime: DEFAULT_MAX_TIME,
+    rules: []
+  };
+}
+function customTrivialReason(def) {
+  const lvl = buildCustomLevel(def);
+  return runSolution(lvl, []).won ? "The ball reaches the goal on its own. Add something to solve!" : null;
+}
+function checkCustom(def) {
+  const e = validateCustom(def);
+  if (e) return { ok: false, error: e };
+  const d = def;
+  const t = customTrivialReason(d);
+  if (t) return { ok: false, error: t };
+  return { ok: true, def: d, level: buildCustomLevel(d) };
+}
+
 // src/game/levelDefs.ts
 var LEVEL_DEFS = [
   {
@@ -889,7 +1001,15 @@ var MAX_CHAIN_DEPTH = 40;
 function checkChain(chain, opts = {}) {
   if (chain.engine !== ENGINE_VERSION) return { ok: false, error: "This challenge was made with a different game version." };
   if (chain.links.length > MAX_CHAIN_DEPTH) return { ok: false, error: "Chain too long." };
-  const base = getBaseLevel(chain.base);
+  let base;
+  if (chain.custom) {
+    const cc = checkCustom(chain.custom);
+    if (!cc.ok) return { ok: false, error: cc.error };
+    if (cc.level.id !== chain.base) return { ok: false, error: "Puzzle id mismatch." };
+    base = cc.level;
+  } else {
+    base = getBaseLevel(chain.base);
+  }
   if (!base) return { ok: false, error: "Unknown starting puzzle." };
   const levels = [base];
   for (let k = 0; k < chain.links.length; k++) {
@@ -913,14 +1033,14 @@ function checkChain(chain, opts = {}) {
 // src/server/handler.ts
 var LIMITS = { nodesPerHour: 40, maxSolutionPieces: 8 };
 var err = (code, error) => ({ ok: false, code, error });
-var isInt = (v) => typeof v === "number" && Number.isInteger(v) && Math.abs(v) <= 4294967295;
+var isInt2 = (v) => typeof v === "number" && Number.isInteger(v) && Math.abs(v) <= 4294967295;
 function parseSolution(v) {
   if (!Array.isArray(v) || v.length > LIMITS.maxSolutionPieces) return null;
   const out = [];
   for (const p of v) {
     if (!p || typeof p !== "object") return null;
     const o = p;
-    if (!isInt(o.i) || !isInt(o.x) || !isInt(o.y) || !isInt(o.a)) return null;
+    if (!isInt2(o.i) || !isInt2(o.x) || !isInt2(o.y) || !isInt2(o.a)) return null;
     out.push({ i: o.i, x: o.x, y: o.y, a: o.a });
   }
   return out;
@@ -942,6 +1062,7 @@ var chainOf = (path, proof) => ({
   v: 1,
   engine: ENGINE_VERSION,
   base: path[0].base,
+  ...path[0].custom ? { custom: path[0].custom } : {},
   links: path.map((n) => ({ rule: n.rule, seed: n.seed, solved: n.solved })),
   proof
 });
@@ -954,7 +1075,7 @@ async function handleRequest(store, userId, body, now = Date.now()) {
       if (engine !== ENGINE_VERSION) return err("engine_mismatch", "Please update the app to send this challenge.");
       if (parentId !== null && !idOk(parentId)) return err("bad_request", "Bad parent.");
       if (typeof base !== "string" || base.length > 16) return err("bad_request", "Bad base level.");
-      if (!isRuleId(rule) || !isInt(seed)) return err("bad_request", "Bad twist.");
+      if (!isRuleId(rule) || !isInt2(seed)) return err("bad_request", "Bad twist.");
       const solved = parseSolution(body.solved);
       const proof = parseSolution(body.proof);
       if (!solved || !proof) return err("bad_request", "Bad solution.");
@@ -966,11 +1087,19 @@ async function handleRequest(store, userId, body, now = Date.now()) {
         prefix = p;
         if (prefix[0].base !== base) return err("bad_request", "Base level mismatch.");
       }
+      let custom = prefix[0]?.custom ?? void 0;
+      if (body.custom !== void 0) {
+        if (parentId) return err("bad_request", "Only the first node carries a custom puzzle.");
+        const e = validateCustom(body.custom);
+        if (e) return err("invalid_puzzle", e);
+        custom = body.custom;
+      }
       if (prefix.length + 1 > MAX_CHAIN_DEPTH) return err("too_deep", "This chain is as long as it can get!");
       const candidate = {
         v: 1,
         engine: ENGINE_VERSION,
         base,
+        ...custom ? { custom } : {},
         links: [...prefix.map((n) => ({ rule: n.rule, seed: n.seed, solved: n.solved })), { rule, seed: seed >>> 0, solved }],
         proof
       };
@@ -981,6 +1110,7 @@ async function handleRequest(store, userId, body, now = Date.now()) {
         parentId: parentId ?? null,
         depth: prefix.length + 1,
         base,
+        custom: parentId ? null : custom ?? null,
         rule,
         seed: seed >>> 0,
         solved,

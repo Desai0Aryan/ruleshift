@@ -9,6 +9,8 @@ export function createNodeBody(chain: Chain, parentId: string | null) {
     engine: ENGINE_VERSION,
     parentId,
     base: chain.base,
+    // only the ROOT node stores the player-made puzzle; children reach it through their parent
+    ...(chain.custom && chain.links.length === 1 ? { custom: chain.custom } : {}),
     rule: last.rule,
     seed: last.seed,
     solved: last.solved,

@@ -1,4 +1,5 @@
 import { ENGINE_VERSION } from '../game/constants';
+import { checkCustom, type CustomDef } from '../game/custom';
 import { getBaseLevel } from '../game/levels';
 import { validateSolution } from '../game/placement';
 import { runSolution } from '../game/sim';
@@ -21,6 +22,8 @@ export interface Chain {
   v: 1;
   engine: number;
   base: string;
+  /** present when the chain starts from a player-made puzzle (then `base` must equal its derived id) */
+  custom?: CustomDef;
   links: ChainLink[];
   proof: Solution;
 }
@@ -35,7 +38,15 @@ export type ChainCheck =
 export function checkChain(chain: Chain, opts: { requireProof?: boolean } = {}): ChainCheck {
   if (chain.engine !== ENGINE_VERSION) return { ok: false, error: 'This challenge was made with a different game version.' };
   if (chain.links.length > MAX_CHAIN_DEPTH) return { ok: false, error: 'Chain too long.' };
-  const base = getBaseLevel(chain.base);
+  let base;
+  if (chain.custom) {
+    const cc = checkCustom(chain.custom);
+    if (!cc.ok) return { ok: false, error: cc.error };
+    if (cc.level.id !== chain.base) return { ok: false, error: 'Puzzle id mismatch.' };
+    base = cc.level;
+  } else {
+    base = getBaseLevel(chain.base);
+  }
   if (!base) return { ok: false, error: 'Unknown starting puzzle.' };
   const levels: Level[] = [base];
   for (let k = 0; k < chain.links.length; k++) {
@@ -72,8 +83,8 @@ export function extendChain(chain: Chain, rule: RuleId, seed: number, solved: So
 }
 
 /** Starts a brand-new chain from an authored level the player just solved. */
-export function startChain(baseId: string, rule: RuleId, seed: number, solved: Solution, nextProof: Solution): Chain {
-  return { v: 1, engine: ENGINE_VERSION, base: baseId, links: [{ rule, seed, solved }], proof: nextProof };
+export function startChain(baseId: string, rule: RuleId, seed: number, solved: Solution, nextProof: Solution, custom?: CustomDef): Chain {
+  return { v: 1, engine: ENGINE_VERSION, base: baseId, ...(custom ? { custom } : {}), links: [{ rule, seed, solved }], proof: nextProof };
 }
 
 export const chainDepth = (c: Chain) => c.links.length;

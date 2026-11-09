@@ -1,4 +1,5 @@
 import { ENGINE_VERSION } from '../game/constants';
+import { type CustomDef, validateCustom } from '../game/custom';
 import { fnv1a } from '../game/rng';
 import type { Placement, RuleId, Solution } from '../game/types';
 import { RULE_ORDER } from '../rules';
@@ -48,6 +49,7 @@ export function encodeChain(chain: Chain): string {
   const body = JSON.stringify({
     e: chain.engine,
     b: chain.base,
+    ...(chain.custom ? { c: chain.custom } : {}),
     l: chain.links.map((k) => [RULE_ORDER.indexOf(k.rule), k.seed, packSol(k.solved)]),
     p: packSol(chain.proof),
   });
@@ -83,6 +85,12 @@ export function decodeChain(code: string): DecodeResult {
   if (!isInt(o.e) || o.e !== ENGINE_VERSION) return bad('This challenge was made with a different game version.');
   if (typeof o.b !== 'string' || o.b.length > 16) return bad('Challenge code is damaged.');
   if (!Array.isArray(o.l) || o.l.length > MAX_CHAIN_DEPTH) return bad('Challenge code is damaged.');
+  let custom: Chain['custom'];
+  if (o.c !== undefined) {
+    const e = validateCustom(o.c);
+    if (e) return bad('This puzzle can\u2019t be opened: ' + e);
+    custom = o.c as Chain['custom'];
+  }
   const links: Chain['links'] = [];
   for (const l of o.l) {
     if (!Array.isArray(l) || l.length !== 3 || !isInt(l[0]) || !isInt(l[1])) return bad('Challenge code is damaged.');
@@ -93,5 +101,21 @@ export function decodeChain(code: string): DecodeResult {
   }
   const proof = unpackSol(o.p);
   if (!proof) return bad('Challenge code is damaged.');
-  return { ok: true, chain: { v: 1, engine: o.e, base: o.b, links, proof } };
+  return { ok: true, chain: { v: 1, engine: o.e, base: o.b, ...(custom ? { custom } : {}), links, proof } };
+}
+
+/** "RC1.<b64>.<checksum>": a puzzle definition on its own (editor -> test play handoff). */
+export function encodeCustom(def: CustomDef): string {
+  const body = JSON.stringify(def);
+  return `RC1.${b64Encode(body)}.${fnv1a(body).toString(36)}`;
+}
+export function decodeCustom(code: string): { ok: true; def: CustomDef } | { ok: false; error: string } {
+  const parts = code.trim().split('.');
+  if (parts.length !== 3 || parts[0] !== 'RC1' || parts[1].length > 8000) return { ok: false, error: 'Not a puzzle.' };
+  const body = b64Decode(parts[1]);
+  if (body === null || fnv1a(body).toString(36) !== parts[2]) return { ok: false, error: 'Puzzle code is damaged.' };
+  let raw: unknown;
+  try { raw = JSON.parse(body); } catch { return { ok: false, error: 'Puzzle code is damaged.' }; }
+  const e = validateCustom(raw);
+  return e ? { ok: false, error: e } : { ok: true, def: raw as CustomDef };
 }

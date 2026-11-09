@@ -1,3 +1,4 @@
+import { checkCustom, type CustomDef } from '../game/custom';
 import { getBaseLevel, pinnedSolution } from '../game/levels';
 import type { Level, RuleId, Solution } from '../game/types';
 import { type Chain, checkChain, extendChain, startChain } from './chain';
@@ -14,7 +15,9 @@ export interface Challenge {
   hint: Solution;
   /** 1-based hop number the player is about to add */
   depth: number;
-  source: 'campaign' | 'friend' | 'daily';
+  source: 'campaign' | 'friend' | 'daily' | 'custom';
+  /** set when the puzzle (or its chain's root) is a player-made level */
+  custom?: CustomDef;
   /** server node this puzzle came from (remote challenges only) */
   nodeId?: string;
 }
@@ -25,6 +28,13 @@ export function challengeFromBase(id: string): Challenge | null {
   return { level, chain: null, hint: pinnedSolution(id) ?? [], depth: 1, source: 'campaign' };
 }
 
+/** The creator testing their own puzzle. The hint stays empty: the creator is the one who knows the answer. */
+export function challengeFromCustom(def: CustomDef): { ok: true; challenge: Challenge } | { ok: false; error: string } {
+  const c = checkCustom(def);
+  if (!c.ok) return c;
+  return { ok: true, challenge: { level: c.level, chain: null, hint: [], depth: 1, source: 'custom', custom: def } };
+}
+
 export function challengeFromChain(
   chain: Chain,
   opts: { nodeId?: string; proofHidden?: boolean } = {},
@@ -33,7 +43,7 @@ export function challengeFromChain(
   if (!c.ok) return c;
   return {
     ok: true,
-    challenge: { level: c.levels[c.levels.length - 1], chain, hint: chain.proof, depth: chain.links.length + 1, source: 'friend', nodeId: opts.nodeId },
+    challenge: { level: c.levels[c.levels.length - 1], chain, hint: chain.proof, depth: chain.links.length + 1, source: 'friend', nodeId: opts.nodeId, custom: chain.custom },
   };
 }
 
@@ -41,5 +51,5 @@ export function challengeFromChain(
 export function passItOn(ch: Challenge, solved: Solution, rule: { id: RuleId; seed: number }, nextProof: Solution): Chain {
   return ch.chain
     ? extendChain(ch.chain, rule.id, rule.seed, solved, nextProof)
-    : startChain(ch.level.base, rule.id, rule.seed, solved, nextProof);
+    : startChain(ch.level.base, rule.id, rule.seed, solved, nextProof, ch.custom);
 }

@@ -81,6 +81,23 @@ describe('interstitials', () => {
   });
 });
 
+describe('creator pass', () => {
+  it('is locked by default, unlocked by the pass or the supporter pack, and restored after reinstall', async () => {
+    const purchases = createMockPurchases();
+    const a = mk({ purchases }); await a.m.init();
+    expect(a.m.getSnapshot().creatorUnlocked).toBe(false);
+    expect(await a.m.buy('creator')).toEqual({ ok: true });
+    expect(a.m.getSnapshot().creatorUnlocked).toBe(true);
+    expect(a.m.getSnapshot().adsRemoved).toBe(false); // the pass does not remove ads
+    expect(a.m.getSnapshot().hints).toBe(3);
+    const b = mk({ purchases }); await b.m.init(); // reinstall
+    expect(b.m.getSnapshot().creatorUnlocked).toBe(true);
+    const c = mk({ purchases: createMockPurchases() }); await c.m.init();
+    await c.m.buy('supporter');
+    expect(c.m.getSnapshot().creatorUnlocked).toBe(true);
+  });
+});
+
 describe('purchases', () => {
   it('hint pack adds hints; supporter grants hints once and removes ads', async () => {
     const purchases = createMockPurchases();

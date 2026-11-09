@@ -20,7 +20,7 @@ const newId = () => {
 };
 
 const toRow = (r: any) => ({
-  id: r.id, parentId: r.parent_id, depth: r.depth, base: r.base, rule: r.rule, seed: Number(r.seed),
+  id: r.id, parentId: r.parent_id, depth: r.depth, base: r.base, custom: r.custom ?? null, rule: r.rule, seed: Number(r.seed),
   solved: r.solved, proof: r.proof, playerId: r.player_id ?? '', createdAt: new Date(r.created_at).getTime(), engine: r.engine,
 });
 
@@ -33,7 +33,7 @@ function makeStore(db: any) {
     },
     async insertNode(n: any) {
       const { error } = await db.from('nodes').insert({
-        id: n.id, parent_id: n.parentId, depth: n.depth, base: n.base, rule: n.rule, seed: n.seed,
+        id: n.id, parent_id: n.parentId, depth: n.depth, base: n.base, custom: n.custom ?? null, rule: n.rule, seed: n.seed,
         solved: n.solved, proof: n.proof, player_id: n.playerId, engine: n.engine,
         created_at: new Date(n.createdAt).toISOString(),
       });

@@ -17,7 +17,7 @@ export function createMockAds(opts: { rewarded?: RewardedResult; delayMs?: numbe
 
 export function createMockPurchases(opts: { fail?: boolean; cancel?: boolean } = {}): PurchasesAdapter & { ownedSet: Set<Sku> } {
   const ownedSet = new Set<Sku>();
-  const price: Record<Sku, string> = { remove_ads: '$2.99', hints_25: '$0.99', supporter: '$4.99' };
+  const price: Record<Sku, string> = { creator: '$2.99', remove_ads: '$2.99', hints_25: '$0.99', supporter: '$4.99' };
   return {
     name: 'mock-purchases', ownedSet,
     async init() {},
