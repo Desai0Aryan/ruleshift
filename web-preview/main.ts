@@ -12,12 +12,15 @@ import { extractCode, shareMessage } from '../src/social/links';
 import type { Chain } from '../src/social/chain';
 import { drawScene, fitView, toWorld, type View } from './draw';
 import { sfx } from './sound';
+import { EditorController, type Tool } from '../src/editor/controller';
+import { challengeFromCustom } from '../src/social/flow';
+import { solve } from '../src/game/solver';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const cv = $<HTMLCanvasElement>('cv');
 const ctx = cv.getContext('2d')!;
 
-type Mode = 'home' | 'play' | 'replay';
+type Mode = 'home' | 'play' | 'replay' | 'edit';
 let mode: Mode = 'home';
 let challenge: Challenge | null = null;
 let ctl: PlayController | null = null;
@@ -27,6 +30,9 @@ let view: View = fitView(300, 500, 90, 160);
 let lastChain: Chain | null = null;
 let modalOpen = false;
 let wonShown = false;
+const ed = new EditorController();
+let editPlay: PlayController | null = null;
+let editRev = -1;
 
 // ---------- progress (best-effort) ----------
 const solvedSet = new Set<string>();
@@ -40,17 +46,19 @@ function resize() {
   cv.width = Math.round(r.width * dpr);
   cv.height = Math.round(r.height * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const lvl = (mode === 'replay' ? replay?.ctl.level : ctl?.level) ?? BASE_LEVELS[0];
+  const lvl = (mode === 'replay' ? replay?.ctl.level : mode === 'edit' ? editPlay?.level : ctl?.level) ?? BASE_LEVELS[0];
   view = fitView(r.width, r.height, lvl.w, lvl.h, 8);
   view = { ...view, oy: Math.max(view.oy, 58) < view.oy ? view.oy : view.oy }; // keep the top bar clear
   const topPad = 52;
-  const sc = Math.min((r.width - 16) / lvl.w, (r.height - topPad - 8) / lvl.h);
-  view = { w: r.width, h: r.height, scale: sc, ox: (r.width - lvl.w * sc) / 2, oy: topPad + (r.height - topPad - lvl.h * sc) / 2 };
+  const botPad = mode === 'edit' ? 215 : 8;
+  const sc = Math.min((r.width - 16) / lvl.w, (r.height - topPad - botPad) / lvl.h);
+  view = { w: r.width, h: r.height, scale: sc, ox: (r.width - lvl.w * sc) / 2, oy: topPad + (r.height - topPad - botPad - lvl.h * sc) / 2 };
 }
 window.addEventListener('resize', resize);
 
 // ---------- screens ----------
 function showHome(msg = '') {
+  $('edit').classList.add('hidden');
   mode = 'home'; ctl = null; replay = null; challenge = null;
   $('home').classList.remove('hidden');
   $('tray').classList.add('hidden');
@@ -71,6 +79,30 @@ function showHome(msg = '') {
   const lv = liveStreak(loadDaily(), dayIndex());
   $('dailyBtn').textContent = `Daily #${dailyNumber(dayIndex())}${lv.doneToday ? ' \u2713' : ''}${lv.streak > 0 ? ` \uD83D\uDD25${lv.streak}` : ''}`;
 }
+
+function showEditor(back = false) {
+  mode = 'edit'; ctl = null; replay = null;
+  if (!back) { try { const d = JSON.parse(localStorage.getItem('rs.draft') || 'null'); if (d) { ed.def = d; ed.revision++; } } catch { /* ignore */ } }
+  for (const id of ['home', 'tray', 'banner', 'hintBtn']) $(id).classList.add('hidden');
+  $('bar').classList.remove('hidden'); $('edit').classList.remove('hidden');
+  $('ttl').innerHTML = 'Create a puzzle<small>Draw, test, then send</small>'; $('chips').innerHTML = '';
+  closeModal(); editRev = -1; resize();
+}
+function editMsg() { $('editMsg').textContent = ed.message || ed.problem() || ''; }
+document.querySelectorAll<HTMLElement>('[data-tool]').forEach((b) => b.onclick = () => { ed.setTool(b.dataset.tool as Tool); editMsg(); });
+$('edUndo').onclick = () => { ed.undo(); editMsg(); };
+$('edClear').onclick = () => { ed.clear(); editMsg(); };
+$('edTest').onclick = () => {
+  const p = ed.problem(); if (p) { ed.message = p; editMsg(); return; }
+  try { localStorage.setItem('rs.draft', JSON.stringify(ed.def)); } catch { /* ignore */ }
+  const r = challengeFromCustom(ed.def); if (!r.ok) { ed.message = r.error; editMsg(); return; }
+  $('edit').classList.add('hidden'); startChallenge(r.challenge);
+};
+$('createBtn').onclick = () => showEditor();
+function editPoint(e: PointerEvent): [number, number] { const r = cv.getBoundingClientRect(); return toWorld(view, e.clientX - r.left, e.clientY - r.top); }
+cv.addEventListener('pointerdown', (e) => { if (mode !== 'edit') return; cv.setPointerCapture(e.pointerId); const [x, y] = editPoint(e); ed.down(x, y); editMsg(); });
+cv.addEventListener('pointermove', (e) => { if (mode !== 'edit') return; const [x, y] = editPoint(e); ed.move(x, y); });
+cv.addEventListener('pointerup', (e) => { if (mode !== 'edit') return; const [x, y] = editPoint(e); ed.up(x, y); editMsg(); try { localStorage.setItem('rs.draft', JSON.stringify(ed.def)); } catch { /* ignore */ } });
 
 function loadDaily() { try { return parseProgress(localStorage.getItem('rs.daily')); } catch { return parseProgress(null); } }
 $('dailyBtn').onclick = async () => {
@@ -183,7 +215,7 @@ $('goBtn').onclick = () => {
   else ctl.reset();
   syncGo();
 };
-$('back').onclick = () => (mode === 'replay' ? (challenge ? backToPlay() : showHome()) : showHome());
+$('back').onclick = () => (mode === 'edit' ? (() => { $('edit').classList.add('hidden'); showHome(); })() : challenge?.source === 'custom' ? showEditor(true) : mode === 'replay' ? (challenge ? backToPlay() : showHome()) : showHome());
 $('hintBtn').onclick = () => {
   if (!ctl || !challenge || ctl.phase !== 'edit') return;
   // hint = reveal one piece of a known-good solution that is not yet placed (rewarded-ad hook later)
@@ -325,6 +357,14 @@ function frame(now: number) {
     drawScene(ctx, view, replay.ctl, t, null, false);
     $('banner').textContent = replay.banner;
     $('banner').style.color = replay.stage.rule ? RULES[replay.stage.rule].color : '#eef0ff';
+  } else if (mode === 'edit') {
+    if (editRev !== ed.revision || !editPlay) { editPlay = new PlayController(ed.level()); editRev = ed.revision; resize(); }
+    drawScene(ctx, view, editPlay, t, null, false);
+    if (ed.preview) {
+      const p = ed.preview; ctx.save(); ctx.translate(view.ox, view.oy); ctx.scale(view.scale, view.scale);
+      ctx.strokeStyle = 'rgba(122,255,196,0.8)'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(p[0] / 2, p[1] / 2); ctx.lineTo(p[2] / 2, p[3] / 2); ctx.stroke(); ctx.restore();
+    }
   } else {
     ctx.fillStyle = '#0b0e24'; ctx.fillRect(0, 0, view.w, view.h);
   }
@@ -336,6 +376,7 @@ function frame(now: number) {
 (window as unknown as { __rs: unknown }).__rs = {
   start: (id: string) => startChallenge(challengeFromBase(id)!),
   sync: () => { syncTray(); syncGo(); }, view: () => view, ctl: () => ctl, replay: () => replay, mode: () => mode, lastChain: () => lastChain,
+  edit: () => ed, showEditor, autoSolveCustom: () => { if (ctl) { const r = solve(ctl.level, { budget: 4000 }); ctl.setSolution(r.solution); syncTray(); syncGo(); return r.solved; } return false; },
   openCode, solveAuto: () => { if (ctl && challenge) { ctl.setSolution(challenge.hint); syncTray(); syncGo(); } },
 };
 

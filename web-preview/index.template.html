@@ -73,11 +73,20 @@ button{font:inherit;color:inherit;border:0;cursor:pointer}
     <div class="tag">You solve it · You change it · You pass it on</div>
     <button class="cta" id="playBtn">Play</button>
     <button class="cta" id="dailyBtn" style="background:#1b2160;border:1.5px solid #ff7ad9;margin-top:-6px">Daily puzzle</button>
+    <button class="cta" id="createBtn" style="background:#1b2160;border:1.5px solid #7affc4;margin-top:-6px">Create a puzzle</button>
     <div class="grid" id="grid"></div>
     <div class="paste"><input id="codeIn" placeholder="Paste a friend's challenge…" autocomplete="off" autocapitalize="off" spellcheck="false"><button id="codeGo">Go</button></div>
     <div class="sub" id="homeMsg"></div>
     <div class="sub" style="max-width:320px;text-align:center;margin-top:auto;padding-top:20px">Web preview of the RULESHIFT engine — same deterministic physics as the app.</div>
   </div>
+ </div>
+ <div id="edit" class="hidden" style="position:absolute;left:0;right:0;bottom:0;padding:10px 12px 18px;display:flex;flex-direction:column;gap:8px;background:#0b0e24">
+  <div id="editMsg" style="color:#ff7ad9;font-size:13px;text-align:center;min-height:18px"></div>
+  <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+   <button class="ibtn" style="width:auto;padding:0 12px" data-tool="wall">Wall</button><button class="ibtn" style="width:auto;padding:0 12px" data-tool="bumper">Bumper</button><button class="ibtn" style="width:auto;padding:0 12px" data-tool="ball">Ball</button><button class="ibtn" style="width:auto;padding:0 12px" data-tool="goal">Goal</button><button class="ibtn" style="width:auto;padding:0 12px" data-tool="erase">Erase</button>
+   <button class="ibtn" id="edUndo">&#x21B6;</button><button class="ibtn" id="edClear">&#x2715;</button>
+  </div>
+  <button class="cta" id="edTest" style="margin:0">Test it &#x25B6;</button>
  </div>
  <div id="tray" class="hidden"><div id="pieces"></div><button class="go" id="goBtn">GO</button></div>
  <div class="modal hidden" id="modal"><div class="sheet" id="sheet"></div></div>
